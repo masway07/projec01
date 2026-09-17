@@ -2111,7 +2111,7 @@ export default function App() {
   }
 
   // Check if activeTab is permitted for currentUser
-  const isInventoryTab = activeTab === 'inventory' || activeTab.startsWith('inventory-');
+  const isInventoryTab = activeTab === 'inventory' || activeTab.startsWith('inventory-') || activeTab.startsWith('mold-');
   const isSalesTab =
     activeTab === 'sales' ||
     activeTab === 'salesPlan' ||
@@ -2170,7 +2170,7 @@ export default function App() {
       : currentUser.permissions.includes(activeTab as any));
 
   const getInventoryCategoryFromTab = (tab: string): InventoryCategory => {
-    if (tab === 'inventory-mold-sparepart') return 'mold_sparepart';
+    if (tab === 'inventory-mold-sparepart' || tab.startsWith('mold-')) return 'mold_sparepart';
     if (tab === 'inventory-wip') return 'wip';
     if (tab === 'inventory-finish-good') return 'finish_good';
     return 'raw_material';
@@ -2378,6 +2378,7 @@ export default function App() {
                 currentUser={currentUser}
                 companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
                 activeSubCategory={getInventoryCategoryFromTab(activeTab)}
+                activeGroupId={activeTab.startsWith('mold-') ? activeTab.replace('mold-', '').toUpperCase() : undefined}
                 onSubCategoryChange={handleInventoryCategoryChange}
               />
             )}

@@ -33,7 +33,7 @@ import { AppPermission, AppUser, CompanySettings } from '../types';
 interface NavSubItem {
   id: string;
   label: string;
-  category?: string;
+  category?: string;  subItems?: { id: string; label: string; category?: string; }[];
 }
 
 interface NavItem {
@@ -118,7 +118,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Boxes,
           subItems: [
             { id: 'inventory-raw-material', label: 'Raw Material', category: 'raw_material' },
-            { id: 'inventory-mold-sparepart', label: 'Mold & Spare Part', category: 'mold_sparepart' },
+            { 
+              id: 'inventory-mold-sparepart', 
+              label: 'Mold & Spare Part', 
+              category: 'mold_sparepart',
+              subItems: [
+                { id: 'mold-2rcf', label: 'CF Dies 2R (CF2R)', category: '2RCF' },
+                { id: 'mold-4rcf', label: 'CF Dies 4R (CFD4R)', category: '4RCF' },
+                { id: 'mold-2rmc', label: 'CF Machine 2R (CFM2R)', category: '2RMC' },
+                { id: 'mold-2rtl', label: 'Tools 2R', category: '2RTL' },
+                { id: 'mold-4rtl', label: 'Tools 4R', category: '4RTL' },
+                { id: 'mold-mtel', label: 'Electric', category: 'MTEL' },
+                { id: 'mold-2rsp', label: '2R Spare Cons (2Rcon)', category: '2RSP' },
+                { id: 'mold-2rhl', label: '2R Holder Part (2RHP)', category: '2RHL' },
+                { id: 'mold-4rsp', label: '4R Spare Cons (4Rcon)', category: '4RSP' },
+                { id: 'mold-4rhl', label: '4R Holder List (4RHL)', category: '4RHL' },
+                { id: 'mold-4rhp', label: '4R Holder Part (4RHP)', category: '4RHP' },
+                { id: 'mold-4rbs', label: 'Bush1', category: '4RBS' },
+                { id: 'mold-mtmc', label: 'Mekanik (Mech)', category: 'MTMC' },
+                { id: 'mold-mtbo', label: 'Belt & Oring', category: 'MTBO' },
+                { id: 'mold-prdw', label: 'Dowa', category: 'PRDW' },
+                { id: 'mold-prfr', label: 'Frame', category: 'PRFR' },
+                { id: 'mold-prsh', label: 'Shot Blast', category: 'PRSH' },
+                { id: 'mold-oil', label: 'Oil', category: 'OIL' },
+              ]
+            },
             { id: 'inventory-wip', label: 'Work In Process', category: 'wip' },
             { id: 'inventory-finish-good', label: 'Finish Good', category: 'finish_good' },
           ]
@@ -324,24 +348,70 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 (activeTab === 'inventory' && sub.id === 'inventory-raw-material') ||
                                 ((activeTab === 'sales' || activeTab === 'salesPlan') && sub.id === 'sales-plan') ||
                                 (activeTab === 'salesDelivery' && sub.id === 'sales-delivery') ||
-                                (activeTab === 'salesInvoice' && sub.id === 'sales-invoice');
+                                (activeTab === 'salesInvoice' && sub.id === 'sales-invoice') ||
+                                (sub.subItems && sub.subItems.some(ss => activeTab === ss.id));
+
+                              const hasNestedSubItems = sub.subItems && sub.subItems.length > 0;
+                              const isNestedSubOpen = !!openSubMenus[sub.id];
+
                               return (
-                                <button
-                                  key={sub.id}
-                                  id={`tab-${sub.id}`}
-                                  onClick={() => handleTabClick(sub.id)}
-                                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer text-left ${
-                                    isSubItemActive
-                                      ? 'bg-indigo-600 text-white font-bold shadow-xs shadow-indigo-600/30'
-                                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                                  }`}
-                                  title={sub.label}
-                                >
-                                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                    isSubItemActive ? 'bg-white' : 'bg-slate-500'
-                                  }`} />
-                                  <span className="truncate">{sub.label}</span>
-                                </button>
+                                <div key={sub.id} className="space-y-1">
+                                  <button
+                                    id={`tab-${sub.id}`}
+                                    onClick={() => {
+                                      if (hasNestedSubItems) {
+                                        setOpenSubMenus(prev => ({ ...prev, [sub.id]: !prev[sub.id] }));
+                                        // Auto select first nested item if opening
+                                        if (!isNestedSubOpen) {
+                                          handleTabClick(sub.subItems![0].id);
+                                        }
+                                      } else {
+                                        handleTabClick(sub.id);
+                                      }
+                                    }}
+                                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer text-left ${
+                                      isSubItemActive
+                                        ? 'bg-indigo-600 text-white font-bold shadow-xs shadow-indigo-600/30'
+                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                                    }`}
+                                    title={sub.label}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                        isSubItemActive ? 'bg-white' : 'bg-slate-500'
+                                      }`} />
+                                      <span className="truncate">{sub.label}</span>
+                                    </div>
+                                    {hasNestedSubItems && (
+                                      <div className={`transition-transform ${isNestedSubOpen ? 'rotate-180' : ''}`}>
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                      </div>
+                                    )}
+                                  </button>
+
+                                  {hasNestedSubItems && isNestedSubOpen && (
+                                    <div className="pl-4 pr-1 py-0.5 space-y-1 ml-2 border-l border-slate-700/50">
+                                      {sub.subItems!.map(nested => {
+                                        const isNestedActive = activeTab === nested.id;
+                                        return (
+                                          <button
+                                            key={nested.id}
+                                            id={`tab-${nested.id}`}
+                                            onClick={() => handleTabClick(nested.id)}
+                                            className={`w-full flex items-center gap-2 px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer text-left ${
+                                              isNestedActive
+                                                ? 'text-indigo-300 font-bold bg-slate-800/80'
+                                                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/40'
+                                            }`}
+                                            title={nested.label}
+                                          >
+                                            <span className="truncate">- {nested.label}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
                               );
                             })}
                           </div>

@@ -33,6 +33,7 @@ import {
   Tag
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { InventoryMoldSummaryTable } from './InventoryMoldSummaryTable';
 
 interface InventoryViewProps {
   inventoryItems: InventoryItem[];
@@ -45,6 +46,7 @@ interface InventoryViewProps {
   currentUser?: AppUser | null;
   companySettings?: CompanySettings;
   activeSubCategory?: InventoryCategory;
+  activeGroupId?: string;
   onSubCategoryChange?: (category: InventoryCategory) => void;
 }
 
@@ -116,6 +118,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   currentUser,
   companySettings,
   activeSubCategory = 'raw_material',
+  activeGroupId,
   onSubCategoryChange
 }) => {
   // Selected Sub Category State
@@ -179,6 +182,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
     return inventoryItems.filter(item => {
       // Must match sub-category
       if (item.category !== selectedCategory) return false;
+      
+      // If activeGroupId is provided (for mold & spare part submenus)
+      if (selectedCategory === 'mold_sparepart' && activeGroupId) {
+        const str = `${item.itemCode} ${item.partNo} ${item.name}`.toUpperCase();
+        if (!str.includes(activeGroupId)) return false;
+      }
 
       // Status filter
       if (statusFilter !== 'ALL') {
@@ -920,10 +929,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         </div>
       </div>
 
-      {/* MAIN INVENTORY TABLE */}
-      <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse min-w-[1000px]">
+      {/* MAIN INVENTORY TABLE OR SUMMARY TABLE */}
+      {selectedCategory === 'mold_sparepart' && !activeGroupId ? (
+        <InventoryMoldSummaryTable items={inventoryItems.filter(i => i.category === 'mold_sparepart')} />
+      ) : (
+        <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse min-w-[1000px]">
             <thead>
               <tr className="bg-slate-50/90 text-slate-700 font-bold border-b border-slate-200 select-none">
                 <th className="p-3 text-center w-12">No</th>
@@ -1111,6 +1123,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           </table>
         </div>
       </div>
+      )}
 
       {/* MODAL 1: ADD / EDIT INVENTORY ITEM */}
       {isModalOpen && (
