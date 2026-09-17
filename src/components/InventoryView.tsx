@@ -108,6 +108,32 @@ export const SUB_MENU_CONFIG: {
   }
 ];
 
+export const MOLD_SPAREPART_SUB_GROUPS: {
+  id: string;
+  code: string;
+  label: string;
+}[] = [
+  { id: 'ALL', code: '', label: 'Semua Mold & Spare Part' },
+  { id: '2RCF', code: '2RCF', label: 'CF Dies 2R (CF2R)' },
+  { id: '4RCF', code: '4RCF', label: 'CF Dies 4R (CFD4R)' },
+  { id: '2RMC', code: '2RMC', label: 'CF Machine 2R (CFM2R)' },
+  { id: '2RTL', code: '2RTL', label: 'Tools 2R' },
+  { id: '4RTL', code: '4RTL', label: 'Tools 4R' },
+  { id: 'MTEL', code: 'MTEL', label: 'Electric' },
+  { id: '2RSP', code: '2RSP', label: '2R Spare Cons (2Rcon)' },
+  { id: '2RHP', code: '2RHP', label: '2R Holder Part (2RHP)' },
+  { id: '4RSP', code: '4RSP', label: '4R Spare Cons (4Rcon)' },
+  { id: '4RHL', code: '4RHL', label: '4R Holder List (4RHL)' },
+  { id: '4RHP', code: '4RHP', label: '4R Holder Part (4RHP)' },
+  { id: '4RBS', code: '4RBS', label: 'Bush1' },
+  { id: 'MTMC', code: 'MTMC', label: 'Mekanik (Mech)' },
+  { id: 'MTBO', code: 'MTBO', label: 'Belt & Oring' },
+  { id: 'PRDW', code: 'PRDW', label: 'Dowa' },
+  { id: 'PRFR', code: 'PRFR', label: 'Frame' },
+  { id: 'PRSH', code: 'PRSH', label: 'Shot Blast' },
+  { id: 'OIL_', code: 'OIL_', label: 'Oil' },
+];
+
 export const InventoryView: React.FC<InventoryViewProps> = ({
   inventoryItems,
   coaList,
@@ -124,6 +150,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 }) => {
   // Selected Sub Category State
   const [selectedCategory, setSelectedCategory] = useState<InventoryCategory>(activeSubCategory);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | undefined>(activeGroupId);
 
   // Sync if prop changes externally (e.g. clicked from sidebar)
   React.useEffect(() => {
@@ -131,6 +158,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       setSelectedCategory(activeSubCategory);
     }
   }, [activeSubCategory]);
+
+  React.useEffect(() => {
+    setSelectedGroupId(activeGroupId);
+  }, [activeGroupId]);
 
   const handleCategorySwitch = (cat: InventoryCategory) => {
     setSelectedCategory(cat);
@@ -186,10 +217,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       // Must match sub-category
       if (item.category !== selectedCategory) return false;
       
-      // If activeGroupId is provided (for mold & spare part submenus)
-      if (selectedCategory === 'mold_sparepart' && activeGroupId) {
-        const str = `${item.itemCode} ${item.partNo} ${item.name}`.toUpperCase();
-        if (!str.includes(activeGroupId)) return false;
+      // If selectedGroupId or activeGroupId is provided (for mold & spare part submenus)
+      const currentGroupId = selectedGroupId || activeGroupId;
+      if (selectedCategory === 'mold_sparepart' && currentGroupId) {
+        const targetPrefix = currentGroupId === 'OIL' ? 'OIL_' : currentGroupId;
+        const cleanPrefix = targetPrefix.replace('_', '');
+        const str = `${item.itemCode || ''} ${item.partNo || ''} ${item.name || ''}`.toUpperCase();
+        if (!str.includes(targetPrefix) && !str.includes(cleanPrefix)) return false;
       }
 
       // Status filter
@@ -216,7 +250,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
       return true;
     });
-  }, [inventoryItems, selectedCategory, statusFilter, locationFilter, searchQuery]);
+  }, [inventoryItems, selectedCategory, selectedGroupId, activeGroupId, statusFilter, locationFilter, searchQuery]);
 
   // Metrics for Current Category
   const metrics = useMemo(() => {
@@ -794,6 +828,49 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               );
             })}
           </div>
+
+          {selectedCategory === 'mold_sparepart' && (
+            <div className="pt-4 border-t border-slate-100 mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[11px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>Sub Menu & Kode Item Stock Mold & Spare Part:</span>
+                </div>
+                {selectedGroupId && (
+                  <button
+                    onClick={() => setSelectedGroupId(undefined)}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Lihat Semua Kode</span>
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                {MOLD_SPAREPART_SUB_GROUPS.map(grp => {
+                  const isGrpActive = (!selectedGroupId && grp.id === 'ALL') || (selectedGroupId === grp.code) || (selectedGroupId === 'OIL' && grp.code === 'OIL_');
+                  return (
+                    <button
+                      key={grp.id}
+                      onClick={() => setSelectedGroupId(grp.id === 'ALL' ? undefined : grp.code)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-1.5 cursor-pointer ${
+                        isGrpActive
+                          ? 'bg-amber-500 text-white shadow-xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      <span>{grp.label}</span>
+                      {grp.code && (
+                        <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${isGrpActive ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                          {grp.code}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

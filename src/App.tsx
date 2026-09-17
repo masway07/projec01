@@ -2636,7 +2636,7 @@ export default function App() {
                 currentUser={currentUser}
                 companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
                 activeSubCategory={getInventoryCategoryFromTab(activeTab)}
-                activeGroupId={activeTab.startsWith('mold-') ? activeTab.replace('mold-', '').toUpperCase() : undefined}
+                activeGroupId={activeTab.startsWith('mold-') ? (activeTab === 'mold-oil' ? 'OIL_' : activeTab.replace('mold-', '').toUpperCase()) : undefined}
                 onSubCategoryChange={handleInventoryCategoryChange}
               />
             )}

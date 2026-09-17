@@ -141,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 { id: 'mold-4rtl', label: 'Tools 4R', category: '4RTL' },
                 { id: 'mold-mtel', label: 'Electric', category: 'MTEL' },
                 { id: 'mold-2rsp', label: '2R Spare Cons (2Rcon)', category: '2RSP' },
-                { id: 'mold-2rhl', label: '2R Holder Part (2RHP)', category: '2RHL' },
+                { id: 'mold-2rhp', label: '2R Holder Part (2RHP)', category: '2RHP' },
                 { id: 'mold-4rsp', label: '4R Spare Cons (4Rcon)', category: '4RSP' },
                 { id: 'mold-4rhl', label: '4R Holder List (4RHL)', category: '4RHL' },
                 { id: 'mold-4rhp', label: '4R Holder Part (4RHP)', category: '4RHP' },
@@ -151,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 { id: 'mold-prdw', label: 'Dowa', category: 'PRDW' },
                 { id: 'mold-prfr', label: 'Frame', category: 'PRFR' },
                 { id: 'mold-prsh', label: 'Shot Blast', category: 'PRSH' },
-                { id: 'mold-oil', label: 'Oil', category: 'OIL' },
+                { id: 'mold-oil', label: 'Oil', category: 'OIL_' },
               ]
             },
             { id: 'inventory-wip', label: 'Work In Process', category: 'wip' },
