@@ -199,14 +199,14 @@ export default function App() {
           deptPlanningItems: cleanPlanningItems,
           realizations: cleanRealizations,
           salesPlanItems: Array.isArray(parsed.salesPlanItems) ? parsed.salesPlanItems : [],
-          salesDeliveryItems: Array.isArray(parsed.salesDeliveryItems) && parsed.salesDeliveryItems.length > 0
+          salesDeliveryItems: Array.isArray(parsed.salesDeliveryItems)
             ? parsed.salesDeliveryItems
             : DEFAULT_SALES_DELIVERY_ITEMS,
-          salesInvoiceItems: Array.isArray(parsed.salesInvoiceItems) && parsed.salesInvoiceItems.length > 0
+          salesInvoiceItems: Array.isArray(parsed.salesInvoiceItems)
             ? parsed.salesInvoiceItems
             : DEFAULT_SALES_INVOICE_ITEMS,
           fixedAssetItems: cleanFixedAssets,
-          inventoryItems: Array.isArray(parsed.inventoryItems) && parsed.inventoryItems.length > 0
+          inventoryItems: Array.isArray(parsed.inventoryItems)
             ? parsed.inventoryItems
             : DEFAULT_INVENTORY_ITEMS,
           users: Array.isArray(parsed.users) && parsed.users.length > 0
@@ -227,25 +227,25 @@ export default function App() {
           companySettings: parsed.companySettings && typeof parsed.companySettings === 'object'
             ? parsed.companySettings
             : DEFAULT_COMPANY_SETTINGS,
-          suppliers: Array.isArray(parsed.suppliers) && parsed.suppliers.length > 0
+          suppliers: Array.isArray(parsed.suppliers)
             ? parsed.suppliers
             : DEFAULT_SUPPLIERS,
-          customers: Array.isArray(parsed.customers) && parsed.customers.length > 0
+          customers: Array.isArray(parsed.customers)
             ? parsed.customers
             : DEFAULT_CUSTOMERS,
-          itemStocks: Array.isArray(parsed.itemStocks) && parsed.itemStocks.length > 0
+          itemStocks: Array.isArray(parsed.itemStocks)
             ? parsed.itemStocks
             : DEFAULT_ITEM_STOCKS,
-          productionProcesses: Array.isArray(parsed.productionProcesses) && parsed.productionProcesses.length > 0
+          productionProcesses: Array.isArray(parsed.productionProcesses)
             ? parsed.productionProcesses
             : DEFAULT_PRODUCTION_PROCESSES,
-          dailyRates: Array.isArray(parsed.dailyRates) && parsed.dailyRates.length > 0
+          dailyRates: Array.isArray(parsed.dailyRates)
             ? parsed.dailyRates
             : DEFAULT_DAILY_RATES,
-          purchaseRequests: Array.isArray(parsed.purchaseRequests) && parsed.purchaseRequests.length > 0
+          purchaseRequests: Array.isArray(parsed.purchaseRequests)
             ? parsed.purchaseRequests
             : DEFAULT_PURCHASE_REQUESTS,
-          purchaseOrders: Array.isArray(parsed.purchaseOrders) && parsed.purchaseOrders.length > 0
+          purchaseOrders: Array.isArray(parsed.purchaseOrders)
             ? parsed.purchaseOrders
             : DEFAULT_PURCHASE_ORDERS
         };
@@ -333,8 +333,11 @@ export default function App() {
       const next = updater(prev);
 
       // Push state to server
-      saveAppDataToServer(next).then(ok => {
-        if (ok) {
+      saveAppDataToServer(next).then(res => {
+        if (res && res.version) {
+          lastKnownVersion.current = res.version;
+        }
+        if (res && res.success) {
           const nowStr = new Date().toLocaleTimeString('id-ID');
           setLastSyncedTime(nowStr);
         }
@@ -370,11 +373,22 @@ export default function App() {
           : [];
 
         setAppState(prev => ({
+          ...prev,
           monthlyData: sData.monthlyData || prev.monthlyData,
           deptPlanningItems: cleanedPlanning,
           realizations: cleanedRealizations,
           salesPlanItems: Array.isArray(sData.salesPlanItems) ? sData.salesPlanItems : (prev.salesPlanItems || []),
+          salesDeliveryItems: Array.isArray(sData.salesDeliveryItems) ? sData.salesDeliveryItems : (prev.salesDeliveryItems || []),
+          salesInvoiceItems: Array.isArray(sData.salesInvoiceItems) ? sData.salesInvoiceItems : (prev.salesInvoiceItems || []),
           fixedAssetItems: Array.isArray(sData.fixedAssetItems) ? sData.fixedAssetItems : (prev.fixedAssetItems || []),
+          inventoryItems: Array.isArray(sData.inventoryItems) ? sData.inventoryItems : (prev.inventoryItems || []),
+          purchaseRequests: Array.isArray(sData.purchaseRequests) ? sData.purchaseRequests : (prev.purchaseRequests || []),
+          purchaseOrders: Array.isArray(sData.purchaseOrders) ? sData.purchaseOrders : (prev.purchaseOrders || []),
+          suppliers: Array.isArray(sData.suppliers) ? sData.suppliers : (prev.suppliers || []),
+          customers: Array.isArray(sData.customers) ? sData.customers : (prev.customers || []),
+          itemStocks: Array.isArray(sData.itemStocks) ? sData.itemStocks : (prev.itemStocks || []),
+          productionProcesses: Array.isArray(sData.productionProcesses) ? sData.productionProcesses : (prev.productionProcesses || []),
+          dailyRates: Array.isArray(sData.dailyRates) ? sData.dailyRates : (prev.dailyRates || []),
           users: Array.isArray(sData.users) && sData.users.length > 0 ? sData.users : prev.users,
           departments: Array.isArray(sData.departments) && sData.departments.length > 0 ? sData.departments : prev.departments,
           coa: Array.isArray(sData.coa) && sData.coa.length > 0 ? sData.coa : prev.coa,
@@ -396,23 +410,18 @@ export default function App() {
         if (isManual) {
           showToast('Data berhasil disinkronkan dengan server (Desktop & HP up-to-date)!', 'success');
         }
-      } else if (!resp.data && appState) {
-        // Server database file might be empty on initial cold start, push current state to seed server
-        await saveAppDataToServer(appState);
-        const nowStr = new Date().toLocaleTimeString('id-ID');
-        setLastSyncedTime(nowStr);
       }
     } catch (err) {
       console.error('Sync error:', err);
     } finally {
       setIsSyncing(false);
     }
-  }, [appState, showToast]);
+  }, [showToast]);
 
   // On initial mount, sync with server
   useEffect(() => {
     syncFromServer(false);
-  }, []);
+  }, [syncFromServer]);
 
   // Periodic polling & Window focus sync (every 4 seconds) to ensure Desktop & Mobile stay 100% in sync
   useEffect(() => {
@@ -431,7 +440,14 @@ export default function App() {
 
     const onFocus = () => {
       if (!isSavingRef.current) {
-        syncFromServer(false);
+        fetch('/api/sync-status')
+          .then(r => r.json())
+          .then(json => {
+            if (json.success && json.version && json.version !== lastKnownVersion.current) {
+              syncFromServer(false);
+            }
+          })
+          .catch(() => {});
       }
     };
 
@@ -1715,6 +1731,19 @@ export default function App() {
     showToast('Item stock berhasil dihapus.', 'info');
   };
 
+  const handleDeleteBatchItemStock = (ids: string[]) => {
+    if (!ids || ids.length === 0) return;
+    updateAndSyncState(prev => ({
+      ...prev,
+      itemStocks: (prev.itemStocks || []).filter(i => !ids.includes(i.id))
+    }), {
+      action: 'DELETE',
+      module: 'Master Item Stock',
+      details: `Menghapus massal ${ids.length} item stock`
+    });
+    showToast(`${ids.length} item stock berhasil dihapus.`, 'info');
+  };
+
   // ===================== MASTER DATA: PROSES PRODUKSI HANDLERS =====================
   const handleAddProcess = (processData: Omit<ProductionProcess, 'id'>) => {
     const newProcess: ProductionProcess = {
@@ -2027,38 +2056,20 @@ export default function App() {
       salesInvoiceItems: Array.isArray(newState.salesInvoiceItems) ? newState.salesInvoiceItems : DEFAULT_SALES_INVOICE_ITEMS,
       fixedAssetItems: Array.isArray(newState.fixedAssetItems) ? newState.fixedAssetItems : [],
       inventoryItems: Array.isArray(newState.inventoryItems) ? newState.inventoryItems : DEFAULT_INVENTORY_ITEMS,
-      users: Array.isArray(newState.users) && newState.users.length > 0 ? newState.users : DEFAULT_USERS,
-      departments: Array.isArray(newState.departments) && newState.departments.length > 0
-        ? newState.departments
-        : DEFAULT_DEPARTMENTS,
-      coa: Array.isArray(newState.coa) && newState.coa.length > 0
-        ? newState.coa
-        : DEFAULT_COA,
+      users: Array.isArray(newState.users) ? newState.users : DEFAULT_USERS,
+      departments: Array.isArray(newState.departments) ? newState.departments : DEFAULT_DEPARTMENTS,
+      coa: Array.isArray(newState.coa) ? newState.coa : DEFAULT_COA,
       ratesByYear: newState.ratesByYear && typeof newState.ratesByYear === 'object'
         ? newState.ratesByYear
         : DEFAULT_RATES_BY_YEAR,
       companySettings: newState.companySettings || DEFAULT_COMPANY_SETTINGS,
-      suppliers: Array.isArray(newState.suppliers) && newState.suppliers.length > 0
-        ? newState.suppliers
-        : DEFAULT_SUPPLIERS,
-      customers: Array.isArray(newState.customers) && newState.customers.length > 0
-        ? newState.customers
-        : DEFAULT_CUSTOMERS,
-      itemStocks: Array.isArray(newState.itemStocks) && newState.itemStocks.length > 0
-        ? newState.itemStocks
-        : DEFAULT_ITEM_STOCKS,
-      productionProcesses: Array.isArray(newState.productionProcesses) && newState.productionProcesses.length > 0
-        ? newState.productionProcesses
-        : DEFAULT_PRODUCTION_PROCESSES,
-      dailyRates: Array.isArray(newState.dailyRates) && newState.dailyRates.length > 0
-        ? newState.dailyRates
-        : DEFAULT_DAILY_RATES,
-      purchaseRequests: Array.isArray(newState.purchaseRequests) && newState.purchaseRequests.length > 0
-        ? newState.purchaseRequests
-        : DEFAULT_PURCHASE_REQUESTS,
-      purchaseOrders: Array.isArray(newState.purchaseOrders) && newState.purchaseOrders.length > 0
-        ? newState.purchaseOrders
-        : DEFAULT_PURCHASE_ORDERS
+      suppliers: Array.isArray(newState.suppliers) ? newState.suppliers : DEFAULT_SUPPLIERS,
+      customers: Array.isArray(newState.customers) ? newState.customers : DEFAULT_CUSTOMERS,
+      itemStocks: Array.isArray(newState.itemStocks) ? newState.itemStocks : DEFAULT_ITEM_STOCKS,
+      productionProcesses: Array.isArray(newState.productionProcesses) ? newState.productionProcesses : DEFAULT_PRODUCTION_PROCESSES,
+      dailyRates: Array.isArray(newState.dailyRates) ? newState.dailyRates : DEFAULT_DAILY_RATES,
+      purchaseRequests: Array.isArray(newState.purchaseRequests) ? newState.purchaseRequests : DEFAULT_PURCHASE_REQUESTS,
+      purchaseOrders: Array.isArray(newState.purchaseOrders) ? newState.purchaseOrders : DEFAULT_PURCHASE_ORDERS
     }), {
       action: 'IMPORT',
       module: 'Sistem',
@@ -2534,6 +2545,7 @@ export default function App() {
                 onBatchAddItemStock={handleBatchAddItemStock}
                 onUpdateItemStock={handleUpdateItemStock}
                 onDeleteItemStock={handleDeleteItemStock}
+                onDeleteBatchItemStock={handleDeleteBatchItemStock}
               />
             )}
 

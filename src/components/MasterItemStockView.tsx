@@ -12,6 +12,7 @@ export interface MasterItemStockViewProps {
   onBatchAddItemStock?: (items: Omit<ItemStock, 'id' | 'createdAt' | 'updatedAt'>[]) => void;
   onUpdateItemStock: (id: string, item: Partial<ItemStock>) => void;
   onDeleteItemStock: (id: string) => void;
+  onDeleteBatchItemStock?: (ids: string[]) => void;
 }
 
 export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
@@ -22,7 +23,8 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
   onAddItemStock,
   onBatchAddItemStock,
   onUpdateItemStock,
-  onDeleteItemStock
+  onDeleteItemStock,
+  onDeleteBatchItemStock
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -30,6 +32,9 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ItemStock | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [deleteConfirmType, setDeleteConfirmType] = useState<'single' | 'selected' | 'all' | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<ItemStock | null>(null);
 
   // Consolidated COA list from either prop
   const allCoa: COA[] = (coaList && coaList.length > 0) ? coaList : (coaAccounts || []);
@@ -320,6 +325,55 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
     return matchSearch && matchCategory;
   });
 
+  const isAllSelected = filteredItems.length > 0 && filteredItems.every(i => selectedIds.includes(i.id));
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds(prev => prev.filter(id => !filteredItems.some(item => item.id === id)));
+    } else {
+      const filteredItemIds = filteredItems.map(item => item.id);
+      setSelectedIds(prev => Array.from(new Set([...prev, ...filteredItemIds])));
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    setDeleteConfirmType('selected');
+  };
+
+  const handleDeleteAll = () => {
+    if (itemStocks.length === 0) return;
+    setDeleteConfirmType('all');
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirmType === 'single' && itemToDelete) {
+      onDeleteItemStock(itemToDelete.id);
+      setSelectedIds(prev => prev.filter(id => id !== itemToDelete.id));
+    } else if (deleteConfirmType === 'selected') {
+      if (selectedIds.length > 0) {
+        if (onDeleteBatchItemStock) {
+          onDeleteBatchItemStock(selectedIds);
+        } else {
+          selectedIds.forEach(id => onDeleteItemStock(id));
+        }
+        setSelectedIds([]);
+      }
+    } else if (deleteConfirmType === 'all') {
+      if (itemStocks.length > 0) {
+        const allIds = itemStocks.map(i => i.id);
+        if (onDeleteBatchItemStock) {
+          onDeleteBatchItemStock(allIds);
+        } else {
+          allIds.forEach(id => onDeleteItemStock(id));
+        }
+        setSelectedIds([]);
+      }
+    }
+    setDeleteConfirmType(null);
+    setItemToDelete(null);
+  };
+
   return (
     <div id="view-master-item-stock" className="space-y-6">
       {/* Header Banner */}
@@ -339,6 +393,18 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {itemStocks.length > 0 && (
+              <button
+                type="button"
+                id="btnDeleteAllItemStock"
+                onClick={handleDeleteAll}
+                className="flex items-center gap-2 px-3.5 py-2.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer border border-rose-500/30"
+                title="Hapus seluruh data item stock dalam database"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Hapus Semua ({itemStocks.length})</span>
+              </button>
+            )}
             <button
               type="button"
               id="btnImportItemStock"
@@ -422,12 +488,48 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
         </div>
       </div>
 
+      {/* Selection / Bulk Action Bar */}
+      {selectedIds.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2 text-xs text-amber-900 font-bold">
+            <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>Terpilih <strong>{selectedIds.length}</strong> dari {filteredItems.length} item stock</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-semibold transition cursor-pointer"
+            >
+              Batal Pilih
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteSelected}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Hapus Terpilih ({selectedIds.length})</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Item Stock Table */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-700">
             <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               <tr>
+                <th className="py-3.5 px-3 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={handleToggleSelectAll}
+                    title="Pilih / Batal Pilih Semua"
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                  />
+                </th>
                 <th className="py-3.5 px-4">Item & Kategori</th>
                 <th className="py-3.5 px-4">UOM & Lokasi</th>
                 <th className="py-3.5 px-4">Akun Persediaan (Asset)</th>
@@ -441,7 +543,7 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
             <tbody className="divide-y divide-slate-100">
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-400">
+                  <td colSpan={9} className="text-center py-12 text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
                       <Boxes className="w-8 h-8 text-slate-300" />
                       <div className="font-semibold text-slate-700">Belum ada item stock</div>
@@ -461,7 +563,24 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
                 </tr>
               ) : (
                 filteredItems.map(item => (
-                  <tr key={item.id} className="hover:bg-slate-50/70 transition">
+                  <tr
+                    key={item.id}
+                    className={`hover:bg-slate-50/70 transition ${selectedIds.includes(item.id) ? 'bg-amber-50/40' : ''}`}
+                  >
+                    <td className="py-3 px-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(item.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedIds(prev => [...prev, item.id]);
+                          } else {
+                            setSelectedIds(prev => prev.filter(id => id !== item.id));
+                          }
+                        }}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                      />
+                    </td>
                     <td className="py-3 px-4">
                       <div className="font-bold text-slate-900">{item.name}</div>
                       {item.specification && (
@@ -549,9 +668,8 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
                         <button
                           type="button"
                           onClick={() => {
-                            if (window.confirm(`Yakin ingin menghapus item stock "${item.code} - ${item.name}"?`)) {
-                              onDeleteItemStock(item.id);
-                            }
+                            setItemToDelete(item);
+                            setDeleteConfirmType('single');
                           }}
                           className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition cursor-pointer"
                           title="Hapus Item"
@@ -1012,6 +1130,69 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
         coaList={allCoa}
         suppliers={suppliers}
       />
+
+      {/* Custom Confirmation Modal for Deleting */}
+      {deleteConfirmType !== null && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-rose-600 mb-4">
+              <div className="p-3 bg-rose-50 rounded-xl border border-rose-100">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">
+                  {deleteConfirmType === 'single' && 'Hapus Item Stock'}
+                  {deleteConfirmType === 'selected' && `Hapus ${selectedIds.length} Item Stock Terpilih`}
+                  {deleteConfirmType === 'all' && 'Hapus SELURUH Data Item Stock'}
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">Konfirmasi Penghapusan</p>
+              </div>
+            </div>
+
+            <div className="py-2 text-xs text-slate-600 leading-relaxed space-y-2">
+              {deleteConfirmType === 'single' && itemToDelete && (
+                <p>
+                  Apakah Anda yakin ingin menghapus item <strong className="text-slate-900">[{itemToDelete.code}] {itemToDelete.name}</strong>?
+                </p>
+              )}
+              {deleteConfirmType === 'selected' && (
+                <p>
+                  Apakah Anda yakin ingin menghapus <strong>{selectedIds.length} item stock</strong> yang Anda centang?
+                </p>
+              )}
+              {deleteConfirmType === 'all' && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-900">
+                  <p className="font-bold mb-1">⚠️ PERINGATAN KONTROL:</p>
+                  <p>
+                    Anda akan menghapus seluruh <strong>({itemStocks.length}) data item stock</strong> dari database. Tindakan ini tidak dapat dibatalkan.
+                  </p>
+                </div>
+              )}
+              <p className="text-slate-400 text-[11px]">Item yang dihapus tidak dapat dipulihkan kembali.</p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteConfirmType(null);
+                  setItemToDelete(null);
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-xs"
+              >
+                Hapus Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

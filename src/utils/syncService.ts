@@ -43,7 +43,7 @@ export async function fetchAppDataFromServer(): Promise<SyncResponse> {
 /**
  * Push application state to server for cross-device sync
  */
-export async function saveAppDataToServer(state: AppState): Promise<boolean> {
+export async function saveAppDataToServer(state: AppState): Promise<{ success: boolean; version?: number }> {
   try {
     const res = await fetch('/api/app-data', {
       method: 'POST',
@@ -53,10 +53,10 @@ export async function saveAppDataToServer(state: AppState): Promise<boolean> {
       body: JSON.stringify(state)
     });
     const json = await res.json();
-    return !!json?.success;
+    return { success: !!json?.success, version: json?.version };
   } catch (err: any) {
     console.warn('[SyncService] Save to server failed:', err.message);
-    return false;
+    return { success: false };
   }
 }
 
