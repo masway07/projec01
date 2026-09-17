@@ -64,6 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({
     budget: true,
+    cashBank: true,
     purchase: true,
     inventory: true,
     sales: true
@@ -90,6 +91,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             { id: 'planner', label: 'Rencana Anggaran', category: 'planner' },
             { id: 'deptPlanning', label: 'Dept Planning', category: 'deptPlanning' },
             { id: 'realisasi', label: 'Realisasi Budget', category: 'realisasi' },
+          ]
+        },
+        {
+          id: 'cashBank',
+          label: 'Kas dan bank',
+          icon: Wallet,
+          subItems: [
+            { id: 'buku-bank', label: 'Buku Bank', category: 'buku_bank' },
+            { id: 'penerimaan', label: 'Penerimaan', category: 'penerimaan' },
+            { id: 'pembayaran', label: 'Pembayaran', category: 'pembayaran' },
           ]
         },
         {

@@ -15,7 +15,10 @@ import {
   ProductionProcess,
   DailyRate,
   PurchaseRequest,
-  PurchaseOrder
+  PurchaseOrder,
+  CashBankAccount,
+  CashBankReceipt,
+  CashBankPayment
 } from '../types';
 
 export const DP_MONTHS: (keyof MonthlyDistribution)[] = [
@@ -1721,5 +1724,198 @@ export const DEFAULT_PURCHASE_ORDERS: PurchaseOrder[] = [
         notes: 'Mill Certificate terlampir'
       }
     ]
+  }
+];
+
+export const DEFAULT_CASH_BANK_ACCOUNTS: CashBankAccount[] = [
+  {
+    id: 'cba_001',
+    accountCode: '1111-01',
+    accountName: 'Bank BCA Operational USD',
+    bankName: 'Bank Central Asia',
+    accountNumber: '8820-192-888',
+    currency: 'USD',
+    openingBalance: 150000.00,
+    currentBalance: 160300.00,
+    coaCode: '1111-01',
+    coaName: 'Bank BCA Operational USD',
+    notes: 'Rekening utama penerimaan & pembayaran transaksi ekspor/impor USD',
+    isActive: true,
+    createdAt: '2026-01-01',
+    updatedAt: '2026-03-15'
+  },
+  {
+    id: 'cba_002',
+    accountCode: '1112-01',
+    accountName: 'Bank Mandiri IDR Payroll & Vendor',
+    bankName: 'Bank Mandiri',
+    accountNumber: '112-00-9988776-5',
+    currency: 'IDR',
+    openingBalance: 1200000000.00,
+    currentBalance: 1505000000.00,
+    coaCode: '1112-01',
+    coaName: 'Bank Mandiri IDR Operational',
+    notes: 'Rekening operasional penggajian karyawan, PPN & pajak lokal',
+    isActive: true,
+    createdAt: '2026-01-01',
+    updatedAt: '2026-03-15'
+  },
+  {
+    id: 'cba_003',
+    accountCode: '1113-01',
+    accountName: 'Bank BNI USD Escrow',
+    bankName: 'Bank Negara Indonesia',
+    accountNumber: '009-8812-334',
+    currency: 'USD',
+    openingBalance: 30000.00,
+    currentBalance: 48200.00,
+    coaCode: '1113-01',
+    coaName: 'Bank BNI USD Reserve',
+    notes: 'Rekening cadangan modal kerja & guarantee deposit',
+    isActive: true,
+    createdAt: '2026-01-01',
+    updatedAt: '2026-03-15'
+  },
+  {
+    id: 'cba_004',
+    accountCode: '1101-01',
+    accountName: 'Kas Kecil Pabrik Cikarang',
+    bankName: 'Kas Kecil Internal',
+    accountNumber: 'PETTY-CKR-01',
+    currency: 'IDR',
+    openingBalance: 20000000.00,
+    currentBalance: 15000000.00,
+    coaCode: '1101-01',
+    coaName: 'Kas Kecil (Petty Cash)',
+    notes: 'Kas tunai operasional harian pabrik (limit Rp 20 Juta)',
+    isActive: true,
+    createdAt: '2026-01-01',
+    updatedAt: '2026-03-15'
+  }
+];
+
+export const DEFAULT_CASH_BANK_RECEIPTS: CashBankReceipt[] = [
+  {
+    id: 'cbr_001',
+    receiptNumber: 'REC/2026/03/001',
+    date: '2026-03-10',
+    bankAccountId: 'cba_001',
+    bankAccountName: 'Bank BCA Operational USD',
+    customerCode: 'CUST-ADM',
+    customerName: 'PT Astra Daihatsu Motor',
+    coaCode: '1121-01',
+    coaName: 'Piutang Usaha (AR USD)',
+    amount: 24500.00,
+    currency: 'USD',
+    exchangeRate: 16250.00,
+    totalIDR: 398125000.00,
+    paymentMethod: 'Transfer',
+    refNumber: 'INV/2026/02/001',
+    description: 'Pelunasan faktur penjualan komponen presisi 2RCF & 4RCF Februari 2026',
+    createdAt: '2026-03-10',
+    updatedAt: '2026-03-10'
+  },
+  {
+    id: 'cbr_002',
+    receiptNumber: 'REC/2026/03/002',
+    date: '2026-03-12',
+    bankAccountId: 'cba_003',
+    bankAccountName: 'Bank BNI USD Escrow',
+    customerCode: 'CUST-TMMIN',
+    customerName: 'PT Toyota Motor Manufacturing Indonesia',
+    coaCode: '2112-01',
+    coaName: 'Uang Muka Penjualan (Advance USD)',
+    amount: 18200.00,
+    currency: 'USD',
+    exchangeRate: 16260.00,
+    totalIDR: 295932000.00,
+    paymentMethod: 'Transfer',
+    refNumber: 'PO/TMMIN/2026/089',
+    description: 'Uang muka (Down Payment 30%) pesanan dies forging transmisi kuartal 2',
+    createdAt: '2026-03-12',
+    updatedAt: '2026-03-12'
+  },
+  {
+    id: 'cbr_003',
+    receiptNumber: 'REC/2026/03/003',
+    date: '2026-03-14',
+    bankAccountId: 'cba_002',
+    bankAccountName: 'Bank Mandiri IDR Payroll & Vendor',
+    customerCode: 'CUST-HPPM',
+    customerName: 'PT Honda Precision Parts Manufacturing',
+    coaCode: '1121-02',
+    coaName: 'Piutang Usaha (AR IDR)',
+    amount: 350000000.00,
+    currency: 'IDR',
+    exchangeRate: 1.00,
+    totalIDR: 350000000.00,
+    paymentMethod: 'Transfer',
+    refNumber: 'INV/2026/02/014',
+    description: 'Pembayaran invoice pengiriman sub-assembly steering gear',
+    createdAt: '2026-03-14',
+    updatedAt: '2026-03-14'
+  }
+];
+
+export const DEFAULT_CASH_BANK_PAYMENTS: CashBankPayment[] = [
+  {
+    id: 'cbp_001',
+    paymentNumber: 'PAY/2026/03/001',
+    date: '2026-03-11',
+    bankAccountId: 'cba_001',
+    bankAccountName: 'Bank BCA Operational USD',
+    supplierCode: 'SUP-001',
+    supplierName: 'PT Krakatau Posco',
+    coaCode: '2111-01',
+    coaName: 'Hutang Usaha (AP USD)',
+    amount: 14200.00,
+    currency: 'USD',
+    exchangeRate: 16255.00,
+    totalIDR: 230821000.00,
+    paymentMethod: 'Transfer',
+    refNumber: 'PO/2026/03/001',
+    description: 'Pembayaran tagihan raw material steel bar S45C pengiriman tahap 1',
+    createdAt: '2026-03-11',
+    updatedAt: '2026-03-11'
+  },
+  {
+    id: 'cbp_002',
+    paymentNumber: 'PAY/2026/03/002',
+    date: '2026-03-13',
+    bankAccountId: 'cba_002',
+    bankAccountName: 'Bank Mandiri IDR Payroll & Vendor',
+    supplierCode: 'SUP-PLN',
+    supplierName: 'PT PLN (Persero) ULP Cikarang',
+    coaCode: '5201-01',
+    coaName: 'Bebal Listrik & Daya Pabrik',
+    amount: 45000000.00,
+    currency: 'IDR',
+    exchangeRate: 1.00,
+    totalIDR: 45000000.00,
+    paymentMethod: 'Transfer',
+    refNumber: 'PLN/CKR/2026/03',
+    description: 'Pembayaran rekening listrik industri daya 555 kVA Maret 2026',
+    createdAt: '2026-03-13',
+    updatedAt: '2026-03-13'
+  },
+  {
+    id: 'cbp_003',
+    paymentNumber: 'PAY/2026/03/003',
+    date: '2026-03-15',
+    bankAccountId: 'cba_004',
+    bankAccountName: 'Kas Kecil Pabrik Cikarang',
+    supplierCode: 'VND-MISC',
+    supplierName: 'Kantin & Operasional Internal',
+    coaCode: '5302-01',
+    coaName: 'Beban Consumable & Dapur',
+    amount: 5000000.00,
+    currency: 'IDR',
+    exchangeRate: 1.00,
+    totalIDR: 5000000.00,
+    paymentMethod: 'Cash',
+    refNumber: 'PK-2026-03-01',
+    description: 'Pengisian ulang kas kecil & konsumsi rapat koordinasi mingguan',
+    createdAt: '2026-03-15',
+    updatedAt: '2026-03-15'
   }
 ];

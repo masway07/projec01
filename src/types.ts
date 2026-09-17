@@ -478,6 +478,65 @@ export interface DailyRate {
   updatedAt?: string;
 }
 
+export interface CashBankAccount {
+  id: string;
+  accountCode: string; // e.g. 1111-01, 1112-01
+  accountName: string; // e.g. Bank BCA USD, Bank Mandiri IDR, Kas Kecil IDR
+  bankName: string; // e.g. Bank Central Asia, Bank Mandiri, Bank BNI
+  accountNumber: string; // e.g. 8820-192-888
+  currency: string; // USD, IDR, JPY, EUR
+  openingBalance: number; // Saldo Awal
+  currentBalance: number; // Saldo Saat Ini
+  coaCode?: string; // Link to COA
+  coaName?: string;
+  notes?: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CashBankReceipt {
+  id: string;
+  receiptNumber: string; // e.g. REC/2026/03/001
+  date: string; // YYYY-MM-DD
+  bankAccountId: string; // Reference to CashBankAccount
+  bankAccountName?: string;
+  customerCode?: string;
+  customerName?: string; // Payer / Customer / Entity
+  coaCode?: string; // Account Code in COA
+  coaName?: string;
+  amount: number; // Jumlah Transaksi
+  currency: string; // USD, IDR, etc.
+  exchangeRate: number; // Kurs ke IDR
+  totalIDR: number; // Amount in IDR
+  paymentMethod: 'Transfer' | 'Cash' | 'Cheque' | 'Giro' | 'Other';
+  refNumber?: string; // No. Referensi / Inv No / Surat Jalan
+  description: string; // Keterangan / Memo
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CashBankPayment {
+  id: string;
+  paymentNumber: string; // e.g. PAY/2026/03/001
+  date: string; // YYYY-MM-DD
+  bankAccountId: string; // Reference to CashBankAccount
+  bankAccountName?: string;
+  supplierCode?: string;
+  supplierName?: string; // Payee / Supplier / Vendor / Entity
+  coaCode?: string; // Account Code in COA
+  coaName?: string;
+  amount: number; // Jumlah Transaksi
+  currency: string; // USD, IDR, etc.
+  exchangeRate: number; // Kurs ke IDR
+  totalIDR: number; // Amount in IDR
+  paymentMethod: 'Transfer' | 'Cash' | 'Cheque' | 'Giro' | 'Other';
+  refNumber?: string; // No. Referensi / PO No / Inv No
+  description: string; // Keterangan / Memo
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export type UserRole = 'admin' | 'finance' | 'dept_user' | 'custom';
 
 export type AppPermission =
@@ -485,6 +544,10 @@ export type AppPermission =
   | 'dashboard'
   | 'planner'
   | 'deptPlanning'
+  | 'cashBank'
+  | 'bukuBank'
+  | 'penerimaan'
+  | 'pembayaran'
   | 'purchase'
   | 'purchaseRequest'
   | 'purchaseOrder'
@@ -533,6 +596,9 @@ export type AuditModule =
   | 'Dept Planning (Budget)'
   | 'Dept Planning (Cost Down)'
   | 'Dept Planning (Plan)'
+  | 'Kas dan Bank (Buku Bank)'
+  | 'Kas dan Bank (Penerimaan)'
+  | 'Kas dan Bank (Pembayaran)'
   | 'Purchase Request'
   | 'Purchase Order'
   | 'Sales'
@@ -582,6 +648,9 @@ export interface AuditLogEntry {
 export interface AppState {
   monthlyData: Record<string, MonthData>;
   deptPlanningItems: DeptPlanningItem[];
+  cashBankAccounts?: CashBankAccount[];
+  cashBankReceipts?: CashBankReceipt[];
+  cashBankPayments?: CashBankPayment[];
   salesPlanItems?: SalesPlanItem[];
   salesDeliveryItems?: SalesDeliveryItem[];
   salesInvoiceItems?: SalesInvoiceItem[];

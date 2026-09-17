@@ -28,6 +28,7 @@ import { MasterProsesView } from './components/MasterProsesView';
 import { MasterRateHarianView } from './components/MasterRateHarianView';
 import { PurchaseRequestView } from './components/PurchaseRequestView';
 import { PurchaseOrderView } from './components/PurchaseOrderView';
+import { CashBankView } from './components/CashBankView';
 import {
   AppState,
   AppUser,
@@ -52,7 +53,10 @@ import {
   ProductionProcess,
   DailyRate,
   PurchaseRequest,
-  PurchaseOrder
+  PurchaseOrder,
+  CashBankAccount,
+  CashBankReceipt,
+  CashBankPayment
 } from './types';
 import {
   DEFAULT_COA,
@@ -70,6 +74,9 @@ import {
   DEFAULT_DAILY_RATES,
   DEFAULT_PURCHASE_REQUESTS,
   DEFAULT_PURCHASE_ORDERS,
+  DEFAULT_CASH_BANK_ACCOUNTS,
+  DEFAULT_CASH_BANK_RECEIPTS,
+  DEFAULT_CASH_BANK_PAYMENTS,
   DP_MONTHS,
   INITIAL_SAMPLE_MONTHLY_DATA
 } from './constants/defaultData';
@@ -247,7 +254,16 @@ export default function App() {
             : DEFAULT_PURCHASE_REQUESTS,
           purchaseOrders: Array.isArray(parsed.purchaseOrders)
             ? parsed.purchaseOrders
-            : DEFAULT_PURCHASE_ORDERS
+            : DEFAULT_PURCHASE_ORDERS,
+          cashBankAccounts: Array.isArray(parsed.cashBankAccounts)
+            ? parsed.cashBankAccounts
+            : DEFAULT_CASH_BANK_ACCOUNTS,
+          cashBankReceipts: Array.isArray(parsed.cashBankReceipts)
+            ? parsed.cashBankReceipts
+            : DEFAULT_CASH_BANK_RECEIPTS,
+          cashBankPayments: Array.isArray(parsed.cashBankPayments)
+            ? parsed.cashBankPayments
+            : DEFAULT_CASH_BANK_PAYMENTS
         };
       }
     } catch (e) {
@@ -274,7 +290,10 @@ export default function App() {
       productionProcesses: DEFAULT_PRODUCTION_PROCESSES,
       dailyRates: DEFAULT_DAILY_RATES,
       purchaseRequests: DEFAULT_PURCHASE_REQUESTS,
-      purchaseOrders: DEFAULT_PURCHASE_ORDERS
+      purchaseOrders: DEFAULT_PURCHASE_ORDERS,
+      cashBankAccounts: DEFAULT_CASH_BANK_ACCOUNTS,
+      cashBankReceipts: DEFAULT_CASH_BANK_RECEIPTS,
+      cashBankPayments: DEFAULT_CASH_BANK_PAYMENTS
     };
   });
 
@@ -384,6 +403,9 @@ export default function App() {
           inventoryItems: Array.isArray(sData.inventoryItems) ? sData.inventoryItems : (prev.inventoryItems || []),
           purchaseRequests: Array.isArray(sData.purchaseRequests) ? sData.purchaseRequests : (prev.purchaseRequests || []),
           purchaseOrders: Array.isArray(sData.purchaseOrders) ? sData.purchaseOrders : (prev.purchaseOrders || []),
+          cashBankAccounts: Array.isArray(sData.cashBankAccounts) ? sData.cashBankAccounts : (prev.cashBankAccounts || []),
+          cashBankReceipts: Array.isArray(sData.cashBankReceipts) ? sData.cashBankReceipts : (prev.cashBankReceipts || []),
+          cashBankPayments: Array.isArray(sData.cashBankPayments) ? sData.cashBankPayments : (prev.cashBankPayments || []),
           suppliers: Array.isArray(sData.suppliers) ? sData.suppliers : (prev.suppliers || []),
           customers: Array.isArray(sData.customers) ? sData.customers : (prev.customers || []),
           itemStocks: Array.isArray(sData.itemStocks) ? sData.itemStocks : (prev.itemStocks || []),
@@ -2099,13 +2121,182 @@ export default function App() {
       productionProcesses: DEFAULT_PRODUCTION_PROCESSES,
       dailyRates: DEFAULT_DAILY_RATES,
       purchaseRequests: DEFAULT_PURCHASE_REQUESTS,
-      purchaseOrders: DEFAULT_PURCHASE_ORDERS
+      purchaseOrders: DEFAULT_PURCHASE_ORDERS,
+      cashBankAccounts: DEFAULT_CASH_BANK_ACCOUNTS,
+      cashBankReceipts: DEFAULT_CASH_BANK_RECEIPTS,
+      cashBankPayments: DEFAULT_CASH_BANK_PAYMENTS
     }), {
       action: 'RESET',
       module: 'Sistem',
-      details: 'Mereset seluruh data aplikasi (Dept Planning, Sales Plan, Fixed Asset, Realisasi, Master Data, Purchase) ke kondisi awal'
+      details: 'Mereset seluruh data aplikasi ke kondisi awal'
     });
     showToast('Seluruh data berhasil dikosongkan.', 'info');
+  };
+
+  // Kas dan Bank Handlers
+  const handleAddCashBankAccount = (account: CashBankAccount) => {
+    updateAndSyncState(prev => ({
+      ...prev,
+      cashBankAccounts: [...(prev.cashBankAccounts || []), account]
+    }), {
+      action: 'CREATE',
+      module: 'Kas dan Bank (Buku Bank)',
+      details: `Menambah rekening bank baru [${account.accountCode}] ${account.accountName} (${account.currency})`
+    });
+    showToast(`Rekening bank ${account.accountName} berhasil ditambahkan`, 'success');
+  };
+
+  const handleUpdateCashBankAccount = (updated: CashBankAccount) => {
+    updateAndSyncState(prev => ({
+      ...prev,
+      cashBankAccounts: (prev.cashBankAccounts || []).map(a => a.id === updated.id ? updated : a)
+    }), {
+      action: 'UPDATE',
+      module: 'Kas dan Bank (Buku Bank)',
+      details: `Memperbarui rekening bank [${updated.accountCode}] ${updated.accountName}`
+    });
+    showToast(`Rekening bank ${updated.accountName} berhasil diperbarui`, 'success');
+  };
+
+  const handleDeleteCashBankAccount = (id: string) => {
+    const acc = (appState.cashBankAccounts || []).find(a => a.id === id);
+    updateAndSyncState(prev => ({
+      ...prev,
+      cashBankAccounts: (prev.cashBankAccounts || []).filter(a => a.id !== id)
+    }), {
+      action: 'DELETE',
+      module: 'Kas dan Bank (Buku Bank)',
+      details: `Menghapus rekening bank ${acc ? acc.accountName : id}`
+    });
+    showToast('Rekening bank berhasil dihapus', 'success');
+  };
+
+  const handleAddCashBankReceipt = (receipt: CashBankReceipt) => {
+    updateAndSyncState(prev => {
+      const updatedAccounts = (prev.cashBankAccounts || []).map(acc => {
+        if (acc.id === receipt.bankAccountId) {
+          return {
+            ...acc,
+            currentBalance: acc.currentBalance + receipt.amount
+          };
+        }
+        return acc;
+      });
+      return {
+        ...prev,
+        cashBankAccounts: updatedAccounts,
+        cashBankReceipts: [receipt, ...(prev.cashBankReceipts || [])]
+      };
+    }, {
+      action: 'CREATE',
+      module: 'Kas dan Bank (Penerimaan)',
+      details: `Menambah transaksi penerimaan [${receipt.receiptNumber}] senilai ${receipt.currency} ${receipt.amount}`
+    });
+    showToast(`Penerimaan ${receipt.receiptNumber} berhasil dicatat`, 'success');
+  };
+
+  const handleUpdateCashBankReceipt = (updated: CashBankReceipt) => {
+    updateAndSyncState(prev => ({
+      ...prev,
+      cashBankReceipts: (prev.cashBankReceipts || []).map(r => r.id === updated.id ? updated : r)
+    }), {
+      action: 'UPDATE',
+      module: 'Kas dan Bank (Penerimaan)',
+      details: `Memperbarui transaksi penerimaan [${updated.receiptNumber}]`
+    });
+    showToast(`Penerimaan ${updated.receiptNumber} berhasil diperbarui`, 'success');
+  };
+
+  const handleDeleteCashBankReceipt = (id: string) => {
+    const rec = (appState.cashBankReceipts || []).find(r => r.id === id);
+    updateAndSyncState(prev => {
+      let updatedAccounts = prev.cashBankAccounts || [];
+      if (rec) {
+        updatedAccounts = updatedAccounts.map(acc => {
+          if (acc.id === rec.bankAccountId) {
+            return {
+              ...acc,
+              currentBalance: acc.currentBalance - rec.amount
+            };
+          }
+          return acc;
+        });
+      }
+      return {
+        ...prev,
+        cashBankAccounts: updatedAccounts,
+        cashBankReceipts: (prev.cashBankReceipts || []).filter(r => r.id !== id)
+      };
+    }, {
+      action: 'DELETE',
+      module: 'Kas dan Bank (Penerimaan)',
+      details: `Menghapus transaksi penerimaan ${rec ? rec.receiptNumber : id}`
+    });
+    showToast('Transaksi penerimaan berhasil dihapus', 'success');
+  };
+
+  const handleAddCashBankPayment = (payment: CashBankPayment) => {
+    updateAndSyncState(prev => {
+      const updatedAccounts = (prev.cashBankAccounts || []).map(acc => {
+        if (acc.id === payment.bankAccountId) {
+          return {
+            ...acc,
+            currentBalance: acc.currentBalance - payment.amount
+          };
+        }
+        return acc;
+      });
+      return {
+        ...prev,
+        cashBankAccounts: updatedAccounts,
+        cashBankPayments: [payment, ...(prev.cashBankPayments || [])]
+      };
+    }, {
+      action: 'CREATE',
+      module: 'Kas dan Bank (Pembayaran)',
+      details: `Menambah transaksi pembayaran [${payment.paymentNumber}] senilai ${payment.currency} ${payment.amount}`
+    });
+    showToast(`Pembayaran ${payment.paymentNumber} berhasil dicatat`, 'success');
+  };
+
+  const handleUpdateCashBankPayment = (updated: CashBankPayment) => {
+    updateAndSyncState(prev => ({
+      ...prev,
+      cashBankPayments: (prev.cashBankPayments || []).map(p => p.id === updated.id ? updated : p)
+    }), {
+      action: 'UPDATE',
+      module: 'Kas dan Bank (Pembayaran)',
+      details: `Memperbarui transaksi pembayaran [${updated.paymentNumber}]`
+    });
+    showToast(`Pembayaran ${updated.paymentNumber} berhasil diperbarui`, 'success');
+  };
+
+  const handleDeleteCashBankPayment = (id: string) => {
+    const pay = (appState.cashBankPayments || []).find(p => p.id === id);
+    updateAndSyncState(prev => {
+      let updatedAccounts = prev.cashBankAccounts || [];
+      if (pay) {
+        updatedAccounts = updatedAccounts.map(acc => {
+          if (acc.id === pay.bankAccountId) {
+            return {
+              ...acc,
+              currentBalance: acc.currentBalance + pay.amount
+            };
+          }
+          return acc;
+        });
+      }
+      return {
+        ...prev,
+        cashBankAccounts: updatedAccounts,
+        cashBankPayments: (prev.cashBankPayments || []).filter(p => p.id !== id)
+      };
+    }, {
+      action: 'DELETE',
+      module: 'Kas dan Bank (Pembayaran)',
+      details: `Menghapus transaksi pembayaran ${pay ? pay.paymentNumber : id}`
+    });
+    showToast('Transaksi pembayaran berhasil dihapus', 'success');
   };
 
   const handleSaveCompanySettings = (newSettings: CompanySettings) => {
@@ -2162,6 +2353,14 @@ export default function App() {
     activeTab === 'purchaseOrder' ||
     activeTab === 'purchase-order';
 
+  const isCashBankTab =
+    activeTab === 'cashBank' ||
+    activeTab === 'cash-bank' ||
+    activeTab === 'buku-bank' ||
+    activeTab === 'bukuBank' ||
+    activeTab === 'penerimaan' ||
+    activeTab === 'pembayaran';
+
   const isMasterDataTab =
     activeTab === 'dept' ||
     activeTab === 'supplier' ||
@@ -2185,6 +2384,13 @@ export default function App() {
       ? (currentUser.permissions.includes('purchase') ||
          currentUser.permissions.includes('purchaseRequest') ||
          currentUser.permissions.includes('purchaseOrder'))
+      : isCashBankTab
+      ? (currentUser.permissions.includes('cashBank') ||
+         currentUser.permissions.includes('bukuBank') ||
+         currentUser.permissions.includes('penerimaan') ||
+         currentUser.permissions.includes('pembayaran') ||
+         currentUser.role === 'finance' ||
+         currentUser.role === 'dept_user')
       : isBudgetTab
       ? (currentUser.permissions.includes('budget') ||
          currentUser.permissions.includes('dashboard') ||
@@ -2391,6 +2597,29 @@ export default function App() {
                 onDeleteFixedAsset={handleDeleteFixedAsset}
                 onBatchImportFixedAsset={handleBatchImportFixedAsset}
                 userDept={currentUser.deptCode}
+                companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
+              />
+            )}
+
+            {isTabPermitted && isCashBankTab && (
+              <CashBankView
+                activeSubTab={activeTab}
+                onSwitchSubTab={tab => setActiveTab(tab)}
+                accounts={appState.cashBankAccounts || DEFAULT_CASH_BANK_ACCOUNTS}
+                receipts={appState.cashBankReceipts || DEFAULT_CASH_BANK_RECEIPTS}
+                payments={appState.cashBankPayments || DEFAULT_CASH_BANK_PAYMENTS}
+                coaList={appState.coa}
+                customers={appState.customers || []}
+                suppliers={appState.suppliers || []}
+                onAddAccount={handleAddCashBankAccount}
+                onUpdateAccount={handleUpdateCashBankAccount}
+                onDeleteAccount={handleDeleteCashBankAccount}
+                onAddReceipt={handleAddCashBankReceipt}
+                onUpdateReceipt={handleUpdateCashBankReceipt}
+                onDeleteReceipt={handleDeleteCashBankReceipt}
+                onAddPayment={handleAddCashBankPayment}
+                onUpdatePayment={handleUpdateCashBankPayment}
+                onDeletePayment={handleDeleteCashBankPayment}
                 companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
               />
             )}
