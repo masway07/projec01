@@ -19,8 +19,16 @@ export const InventoryMoldSubTable: React.FC<Props> = ({ items, startDate, endDa
     return `${lastDay}-${mm}-${yy}`;
   };
 
-  const prevMonthStr = formatMonth(prevMonth);
-  const curMonthStr = formatMonth(currentMonth);
+  const formatCustomDate = (dateStr: string) => {
+    const d = new Date(dateStr + "T00:00:00");
+    const mm = d.toLocaleString('id-ID', { month: 'short' });
+    const yy = d.getFullYear().toString().slice(-2);
+    const dd = d.getDate().toString().padStart(2, '0');
+    return `${dd}-${mm}-${yy}`;
+  };
+
+  const prevMonthStr = startDate ? formatCustomDate(startDate) : formatMonth(prevMonth);
+  const curMonthStr = endDate ? formatCustomDate(endDate) : formatMonth(currentMonth);
 
   const data = useMemo(() => {
     // Convert startDate and endDate to Date objects for comparison

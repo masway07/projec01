@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { PackageCheck, Plus, Search, Boxes, Truck, Star, CheckCircle2, XCircle, Edit2, Trash2, X, AlertCircle, BookOpen } from 'lucide-react';
+import { PackageCheck, Plus, Search, Boxes, Truck, Star, CheckCircle2, XCircle, Edit2, Trash2, X, AlertCircle, BookOpen, FileSpreadsheet } from 'lucide-react';
 import { ItemStock, ItemStockSupplier, COA, Supplier } from '../types';
+import { ItemStockImportModal } from './ItemStockImportModal';
 
 export interface MasterItemStockViewProps {
   itemStocks: ItemStock[];
@@ -8,6 +9,7 @@ export interface MasterItemStockViewProps {
   coaList?: COA[];
   coaAccounts?: COA[];
   onAddItemStock: (item: Omit<ItemStock, 'id'>) => void;
+  onBatchAddItemStock?: (items: Omit<ItemStock, 'id' | 'createdAt' | 'updatedAt'>[]) => void;
   onUpdateItemStock: (id: string, item: Partial<ItemStock>) => void;
   onDeleteItemStock: (id: string) => void;
 }
@@ -18,12 +20,14 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
   coaList = [],
   coaAccounts = [],
   onAddItemStock,
+  onBatchAddItemStock,
   onUpdateItemStock,
   onDeleteItemStock
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ItemStock | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -33,6 +37,7 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
   // Form states
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
+  const [specification, setSpecification] = useState('');
   const [category, setCategory] = useState<'raw_material' | 'mold_sparepart' | 'wip' | 'finish_good' | 'general'>('raw_material');
   const [uom, setUom] = useState('Kg');
   const [inventoryAccountCode, setInventoryAccountCode] = useState('1080001');
@@ -99,6 +104,7 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
     const seq = itemStocks.length + 1;
     setCode(`ITEM-${String(seq).padStart(3, '0')}`);
     setName('');
+    setSpecification('');
     setCategoryDefaults('raw_material');
     setMinimumStock(100);
     setSafetyStock(200);
@@ -123,6 +129,7 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
     setFormError(null);
     setCode(item.code);
     setName(item.name);
+    setSpecification(item.specification || '');
     setCategory(item.category);
     setUom(item.uom);
     setInventoryAccountCode(item.inventoryAccountCode || '1080001');
@@ -241,6 +248,7 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
         ...editingItem,
         code: code.trim().toUpperCase(),
         name: name.trim(),
+        specification: specification.trim(),
         category,
         uom: uom.trim() || 'Pcs',
         inventoryAccountCode: invCode,
@@ -262,6 +270,7 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
       onAddItemStock({
         code: code.trim().toUpperCase(),
         name: name.trim(),
+        specification: specification.trim(),
         category,
         uom: uom.trim() || 'Pcs',
         inventoryAccountCode: invCode,
@@ -302,6 +311,7 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
     const matchSearch =
       (item.code || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.specification || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.inventoryAccountName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.expenseAccountName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.location && item.location.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -328,7 +338,16 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              id="btnImportItemStock"
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer shadow-emerald-600/30"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Import Excel / CSV
+            </button>
             <button
               id="btnAddItemStock"
               onClick={openAddModal}
@@ -445,6 +464,14 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
                   <tr key={item.id} className="hover:bg-slate-50/70 transition">
                     <td className="py-3 px-4">
                       <div className="font-bold text-slate-900">{item.name}</div>
+                      {item.specification && (
+                        <div className="mt-0.5 text-[11px] text-slate-600 flex items-center gap-1">
+                          <span className="text-[10px] uppercase font-bold text-slate-400">Spek/Type:</span>
+                          <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                            {item.specification}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2 mt-1">
                         <span className="font-mono text-[11px] font-semibold text-indigo-600">{item.code}</span>
                         {getCategoryBadge(item.category)}
@@ -585,7 +612,7 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
                     className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-mono uppercase focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
                   />
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Nama Deskripsi Barang <span className="text-rose-500">*</span>
                   </label>
@@ -594,8 +621,20 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
                     required
                     value={name}
                     onChange={e => setName(e.target.value)}
-                    placeholder="Round Steel Bar S45C Dia 28mm x 6000mm"
+                    placeholder="Round Steel Bar S45C"
                     className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Spek / Type Barang
+                  </label>
+                  <input
+                    type="text"
+                    value={specification}
+                    onChange={e => setSpecification(e.target.value)}
+                    placeholder="SKD11 / Dia 28mm / JIS G4051 / Grade A"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
                   />
                 </div>
               </div>
@@ -958,6 +997,21 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Excel / CSV Import Modal */}
+      <ItemStockImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={(items) => {
+          if (onBatchAddItemStock) {
+            onBatchAddItemStock(items);
+          } else {
+            items.forEach(i => onAddItemStock(i));
+          }
+        }}
+        coaList={allCoa}
+        suppliers={suppliers}
+      />
     </div>
   );
 };

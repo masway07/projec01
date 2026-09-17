@@ -1672,6 +1672,24 @@ export default function App() {
     showToast(`Item stock ${newItemStock.name} berhasil ditambahkan!`, 'success');
   };
 
+  const handleBatchAddItemStock = (newItemsData: Omit<ItemStock, 'id' | 'createdAt' | 'updatedAt'>[]) => {
+    const newItems: ItemStock[] = newItemsData.map((itemData, idx) => ({
+      ...itemData,
+      id: `stock_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }));
+    updateAndSyncState(prev => ({
+      ...prev,
+      itemStocks: [...newItems, ...(prev.itemStocks || [])]
+    }), {
+      action: 'IMPORT',
+      module: 'Master Item Stock',
+      details: `Import massal ${newItems.length} item stock dari file Excel/CSV`
+    });
+    showToast(`${newItems.length} item stock berhasil di-import ke database!`, 'success');
+  };
+
   const handleUpdateItemStock = (updated: ItemStock) => {
     updateAndSyncState(prev => ({
       ...prev,
@@ -2513,6 +2531,7 @@ export default function App() {
                 suppliers={appState.suppliers || []}
                 coaList={appState.coa}
                 onAddItemStock={handleAddItemStock}
+                onBatchAddItemStock={handleBatchAddItemStock}
                 onUpdateItemStock={handleUpdateItemStock}
                 onDeleteItemStock={handleDeleteItemStock}
               />

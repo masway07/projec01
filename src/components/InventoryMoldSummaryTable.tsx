@@ -92,8 +92,16 @@ export const InventoryMoldSummaryTable: React.FC<Props> = ({ items, startDate, e
     return `${lastDay}-${mm}-${yy}`;
   };
 
-  const prevMonthStr = formatMonth(prevMonth);
-  const curMonthStr = formatMonth(currentMonth);
+  const formatCustomDate = (dateStr: string) => {
+    const d = new Date(dateStr + "T00:00:00");
+    const mm = d.toLocaleString('id-ID', { month: 'short' });
+    const yy = d.getFullYear().toString().slice(-2);
+    const dd = d.getDate().toString().padStart(2, '0');
+    return `${dd}-${mm}-${yy}`;
+  };
+
+  const prevMonthStr = startDate ? formatCustomDate(startDate) : formatMonth(prevMonth);
+  const curMonthStr = endDate ? formatCustomDate(endDate) : formatMonth(currentMonth);
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200 mt-4">

@@ -433,6 +433,7 @@ export interface ItemStock {
   id: string;
   code: string; // SKU / Item Code (e.g. RM-STEEL-01, MLD-CAV-04)
   name: string;
+  specification?: string; // Spek / Type Barang (e.g. SKD11 / Dia 28mm / JIS G4051)
   category: 'raw_material' | 'mold_sparepart' | 'wip' | 'finish_good' | 'general';
   uom: string; // Pcs, Kg, Sheet, Set, Box, Roll
   inventoryAccountCode: string; // Akun Inventory (Persediaan di COA)
