@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { InventoryMoldSummaryTable } from './InventoryMoldSummaryTable';
+import { InventoryMoldSubTable } from './InventoryMoldSubTable';
 
 interface InventoryViewProps {
   inventoryItems: InventoryItem[];
@@ -932,6 +933,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       {/* MAIN INVENTORY TABLE OR SUMMARY TABLE */}
       {selectedCategory === 'mold_sparepart' && !activeGroupId ? (
         <InventoryMoldSummaryTable items={inventoryItems.filter(i => i.category === 'mold_sparepart')} />
+      ) : selectedCategory === 'mold_sparepart' && activeGroupId ? (
+        <InventoryMoldSubTable items={filteredItems} />
       ) : (
         <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
