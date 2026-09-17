@@ -249,8 +249,7 @@ export const MasterItemStockView: React.FC<MasterItemStockViewProps> = ({
     const expName = expenseAccountName || 'Raw Material Expense / HPP';
 
     if (editingItem) {
-      onUpdateItemStock({
-        ...editingItem,
+      onUpdateItemStock(editingItem.id, {
         code: code.trim().toUpperCase(),
         name: name.trim(),
         specification: specification.trim(),

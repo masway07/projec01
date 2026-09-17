@@ -1130,7 +1130,7 @@ export const CashBankView: React.FC<CashBankViewProps> = ({
                 >
                   <option value="">Pilih Akun COA Kas/Bank...</option>
                   {coaList.map(c => (
-                    <option key={c.id || c.code} value={c.code}>
+                    <option key={c.code} value={c.code}>
                       {c.code} - {c.name}
                     </option>
                   ))}
@@ -1315,7 +1315,7 @@ export const CashBankView: React.FC<CashBankViewProps> = ({
                   >
                     <option value="">Pilih Akun Pendapatan/Piutang...</option>
                     {coaList.map(c => (
-                      <option key={c.id || c.code} value={c.code}>
+                      <option key={c.code} value={c.code}>
                         {c.code} - {c.name}
                       </option>
                     ))}
@@ -1511,7 +1511,7 @@ export const CashBankView: React.FC<CashBankViewProps> = ({
                   >
                     <option value="">Pilih Akun Beban/Hutang...</option>
                     {coaList.map(c => (
-                      <option key={c.id || c.code} value={c.code}>
+                      <option key={c.code} value={c.code}>
                         {c.code} - {c.name}
                       </option>
                     ))}

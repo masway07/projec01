@@ -220,10 +220,17 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       // If selectedGroupId or activeGroupId is provided (for mold & spare part submenus)
       const currentGroupId = selectedGroupId || activeGroupId;
       if (selectedCategory === 'mold_sparepart' && currentGroupId) {
-        const targetPrefix = currentGroupId === 'OIL' ? 'OIL_' : currentGroupId;
-        const cleanPrefix = targetPrefix.replace('_', '');
-        const str = `${item.itemCode || ''} ${item.partNo || ''} ${item.name || ''}`.toUpperCase();
-        if (!str.includes(targetPrefix) && !str.includes(cleanPrefix)) return false;
+        const targetPrefix = (currentGroupId === 'OIL' ? 'OIL_' : currentGroupId).toUpperCase();
+        const cleanPrefix = targetPrefix.replace('_', '').toUpperCase();
+        const codeUpper = (item.itemCode || '').toUpperCase();
+        const partNoUpper = (item.partNo || '').toUpperCase();
+        const nameUpper = (item.name || '').toUpperCase();
+
+        const startsWithCode = codeUpper.startsWith(targetPrefix) || codeUpper.startsWith(cleanPrefix);
+        const startsWithPart = partNoUpper.startsWith(targetPrefix) || partNoUpper.startsWith(cleanPrefix);
+        const includesCode = codeUpper.includes(targetPrefix) || codeUpper.includes(cleanPrefix) || partNoUpper.includes(targetPrefix) || nameUpper.includes(targetPrefix);
+
+        if (!startsWithCode && !startsWithPart && !includesCode) return false;
       }
 
       // Status filter

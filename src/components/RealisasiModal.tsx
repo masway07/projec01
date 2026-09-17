@@ -61,7 +61,7 @@ export const RealisasiModal: React.FC<RealisasiModalProps> = ({
     if (!isNaN(d.getTime())) {
       const monthIdx = d.getMonth();
       if (monthIdx >= 0 && monthIdx < DP_MONTHS.length) {
-        setMonth(DP_MONTHS[monthIdx]);
+        setMonth(String(DP_MONTHS[monthIdx]));
       }
       setYear(d.getFullYear());
     }

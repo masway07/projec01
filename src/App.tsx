@@ -1407,8 +1407,8 @@ export default function App() {
     showToast('Pendapatan bulanan berhasil disimpan!', 'success');
   };
 
-  const handleAddCategory = (category: { name: string; budget: number }) => {
-    const newCat = { id: `cat_${Date.now()}`, ...category };
+  const handleAddCategory = (name: string, budget: number) => {
+    const newCat = { id: `cat_${Date.now()}`, name, budget };
     updateCurrentMonthData(prev => ({
       ...prev,
       categories: [...prev.categories, newCat]
@@ -1416,9 +1416,9 @@ export default function App() {
     logActivity({
       action: 'CREATE',
       module: 'Dept Planning (Budget)',
-      details: `Menambahkan kategori anggaran "${category.name}" limit $${category.budget.toLocaleString('en-US')}`
+      details: `Menambahkan kategori anggaran "${name}" limit $${budget.toLocaleString('en-US')}`
     });
-    showToast(`Kategori "${category.name}" berhasil ditambahkan!`, 'success');
+    showToast(`Kategori "${name}" berhasil ditambahkan!`, 'success');
   };
 
   const handleDeleteCategory = (id: string) => {
@@ -1430,13 +1430,13 @@ export default function App() {
     showToast('Kategori anggaran berhasil dihapus.', 'info');
   };
 
-  const handleAddDebt = (debt: { name: string; monthlyPayment: number; remainingDebt: number }) => {
-    const newDebt = { id: `debt_${Date.now()}`, ...debt };
+  const handleAddDebt = (name: string, monthlyPayment: number, remainingDebt: number) => {
+    const newDebt = { id: `debt_${Date.now()}`, name, monthlyPayment, remainingDebt };
     updateCurrentMonthData(prev => ({
       ...prev,
       debts: [...prev.debts, newDebt]
     }));
-    showToast(`Alokasi kewajiban "${debt.name}" berhasil ditambahkan!`, 'success');
+    showToast(`Alokasi kewajiban "${name}" berhasil ditambahkan!`, 'success');
   };
 
   const handleDeleteDebt = (id: string) => {
@@ -1447,13 +1447,13 @@ export default function App() {
     showToast('Kewajiban berhasil dihapus.', 'info');
   };
 
-  const handleAddGoal = (goal: { name: string; monthlyAllocation: number; targetAmount: number }) => {
-    const newGoal = { id: `goal_${Date.now()}`, ...goal };
+  const handleAddGoal = (name: string, monthlyAllocation: number, targetAmount: number) => {
+    const newGoal = { id: `goal_${Date.now()}`, name, monthlyAllocation, targetAmount };
     updateCurrentMonthData(prev => ({
       ...prev,
       goals: [...prev.goals, newGoal]
     }));
-    showToast(`Target tabungan "${goal.name}" berhasil ditambahkan!`, 'success');
+    showToast(`Target tabungan "${name}" berhasil ditambahkan!`, 'success');
   };
 
   const handleDeleteGoal = (id: string) => {
@@ -1465,9 +1465,10 @@ export default function App() {
   };
 
   // ===================== MASTER DEPARTMENT HANDLERS =====================
-  const handleAddDept = (dept: Department) => {
-    if (appState.departments.some(d => d.code.toLowerCase() === dept.code.toLowerCase())) {
-      showToast(`Kode departemen "${dept.code}" sudah ada.`, 'error');
+  const handleAddDept = (code: string, name: string) => {
+    const dept: Department = { code, name };
+    if (appState.departments.some(d => d.code.toLowerCase() === code.toLowerCase())) {
+      showToast(`Kode departemen "${code}" sudah ada.`, 'error');
       return;
     }
     updateAndSyncState(prev => ({
@@ -1476,15 +1477,16 @@ export default function App() {
     }), {
       action: 'CREATE',
       module: 'Master Dept',
-      details: `Menambahkan departemen baru "${dept.code} - ${dept.name}"`,
-      deptCode: dept.code
+      details: `Menambahkan departemen baru "${code} - ${name}"`,
+      deptCode: code
     });
-    showToast(`Departemen "${dept.code} - ${dept.name}" berhasil ditambahkan!`, 'success');
+    showToast(`Departemen "${code} - ${name}" berhasil ditambahkan!`, 'success');
   };
 
-  const handleEditDept = (oldCode: string, updatedDept: Department) => {
-    if (updatedDept.code !== oldCode && appState.departments.some(d => d.code.toLowerCase() === updatedDept.code.toLowerCase())) {
-      showToast(`Kode departemen "${updatedDept.code}" sudah ada.`, 'error');
+  const handleEditDept = (oldCode: string, newCode: string, newName: string) => {
+    const updatedDept: Department = { code: newCode, name: newName };
+    if (newCode !== oldCode && appState.departments.some(d => d.code.toLowerCase() === newCode.toLowerCase())) {
+      showToast(`Kode departemen "${newCode}" sudah ada.`, 'error');
       return;
     }
 
@@ -1492,15 +1494,15 @@ export default function App() {
       ...prev,
       departments: prev.departments.map(d => (d.code === oldCode ? updatedDept : d)),
       deptPlanningItems: prev.deptPlanningItems.map(item =>
-        item.deptCode === oldCode ? { ...item, deptCode: updatedDept.code, deptName: updatedDept.name } : item
+        item.deptCode === oldCode ? { ...item, deptCode: newCode, deptName: newName } : item
       )
     }), {
       action: 'UPDATE',
       module: 'Master Dept',
-      details: `Memperbarui departemen "${oldCode}" menjadi "${updatedDept.code} - ${updatedDept.name}"`,
-      deptCode: updatedDept.code
+      details: `Memperbarui departemen "${oldCode}" menjadi "${newCode} - ${newName}"`,
+      deptCode: newCode
     });
-    showToast(`Departemen "${updatedDept.code}" diperbarui!`, 'success');
+    showToast(`Departemen "${newCode}" diperbarui!`, 'success');
   };
 
   const handleDeleteDept = (code: string) => {
@@ -1728,16 +1730,19 @@ export default function App() {
     showToast(`${newItems.length} item stock berhasil di-import ke database!`, 'success');
   };
 
-  const handleUpdateItemStock = (updated: ItemStock) => {
+  const handleUpdateItemStock = (id: string, itemUpdates: Partial<ItemStock>) => {
+    const existing = (appState.itemStocks || []).find(i => i.id === id);
+    if (!existing) return;
+    const merged: ItemStock = { ...existing, ...itemUpdates, id, updatedAt: new Date().toISOString() };
     updateAndSyncState(prev => ({
       ...prev,
-      itemStocks: (prev.itemStocks || []).map(i => i.id === updated.id ? updated : i)
+      itemStocks: (prev.itemStocks || []).map(i => i.id === id ? merged : i)
     }), {
       action: 'UPDATE',
       module: 'Master Item Stock',
-      details: `Memperbarui item stock: [${updated.code}] ${updated.name}`
+      details: `Memperbarui item stock: [${merged.code}] ${merged.name}`
     });
-    showToast(`Item stock ${updated.name} berhasil diperbarui!`, 'success');
+    showToast(`Item stock ${merged.name} berhasil diperbarui!`, 'success');
   };
 
   const handleDeleteItemStock = (id: string) => {
@@ -1777,7 +1782,7 @@ export default function App() {
       productionProcesses: [...(prev.productionProcesses || []), newProcess]
     }), {
       action: 'CREATE',
-      module: 'Master Proses Produksi',
+      module: 'Master Proses',
       details: `Menambahkan master proses produksi: [${newProcess.code}] ${newProcess.name}`
     });
     showToast(`Proses produksi ${newProcess.name} berhasil ditambahkan!`, 'success');
@@ -1789,7 +1794,7 @@ export default function App() {
       productionProcesses: (prev.productionProcesses || []).map(p => p.id === updated.id ? updated : p)
     }), {
       action: 'UPDATE',
-      module: 'Master Proses Produksi',
+      module: 'Master Proses',
       details: `Memperbarui master proses produksi: [${updated.code}] ${updated.name}`
     });
     showToast(`Proses produksi ${updated.name} berhasil diperbarui!`, 'success');
@@ -1802,7 +1807,7 @@ export default function App() {
       productionProcesses: (prev.productionProcesses || []).filter(p => p.id !== id)
     }), {
       action: 'DELETE',
-      module: 'Master Proses Produksi',
+      module: 'Master Proses',
       details: `Menghapus master proses produksi: [${target?.code || id}] ${target?.name || ''}`
     });
     showToast('Proses produksi berhasil dihapus.', 'info');
@@ -1819,7 +1824,7 @@ export default function App() {
       dailyRates: [newRate, ...(prev.dailyRates || [])]
     }), {
       action: 'CREATE',
-      module: 'Master Rate Harian',
+      module: 'Rate Harian',
       details: `Input rate harian ${newRate.currency} tgl ${newRate.date}: BI=${newRate.rateBI}, KMK=${newRate.rateKMK}`
     });
     showToast(`Rate harian ${newRate.currency} berhasil dicatat!`, 'success');
@@ -1831,7 +1836,7 @@ export default function App() {
       dailyRates: (prev.dailyRates || []).map(r => r.id === updated.id ? updated : r)
     }), {
       action: 'UPDATE',
-      module: 'Master Rate Harian',
+      module: 'Rate Harian',
       details: `Memperbarui rate harian ${updated.currency} tgl ${updated.date}: BI=${updated.rateBI}, KMK=${updated.rateKMK}`
     });
     showToast(`Rate harian ${updated.currency} berhasil diperbarui!`, 'success');
@@ -1844,7 +1849,7 @@ export default function App() {
       dailyRates: (prev.dailyRates || []).filter(r => r.id !== id)
     }), {
       action: 'DELETE',
-      module: 'Master Rate Harian',
+      module: 'Rate Harian',
       details: `Menghapus rate harian ${target?.currency} tanggal ${target?.date}`
     });
     showToast('Rate harian berhasil dihapus.', 'info');

@@ -590,7 +590,7 @@ export interface AppUser {
   createdAt: string;
 }
 
-export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'BATCH_DELETE' | 'IMPORT' | 'RESET';
+export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'BATCH_DELETE' | 'IMPORT' | 'RESET' | 'APPROVE' | 'REJECT';
 
 export type AuditModule =
   | 'Dept Planning (Budget)'
@@ -618,7 +618,9 @@ export type AuditModule =
   | 'Master Customer'
   | 'Master Item Stock'
   | 'Master Proses'
+  | 'Master Proses Produksi'
   | 'Rate Harian'
+  | 'Master Rate Harian'
   | 'Master COA'
   | 'Exchange Rate'
   | 'Company Settings'

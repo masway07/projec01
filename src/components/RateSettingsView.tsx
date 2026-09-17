@@ -167,7 +167,7 @@ export const RateSettingsView: React.FC<RateSettingsViewProps> = ({
                   </tr>
                 ) : (
                   sortedYears.map(yr => {
-                    const r = ratesByYear[yr] || {};
+                    const r = (ratesByYear[yr] || {}) as Record<string, number>;
                     return (
                       <tr key={yr} className="hover:bg-slate-50 text-xs">
                         <td className="p-3 font-bold text-indigo-700">{yr}</td>

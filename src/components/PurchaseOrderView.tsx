@@ -184,7 +184,8 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
     });
 
     setPoActionToast({
-      message: `Supplier "${supLink.supplierName}" dipilih & item "${item.name}" (${item.code}) dimasukkan ke pesanan PO! Harga: ${supLink.currency === 'IDR' ? 'Rp ' : '$'}${priceToUse.toLocaleString()}`
+      message: `Supplier "${supLink.supplierName}" dipilih & item "${item.name}" (${item.code}) dimasukkan ke pesanan PO! Harga: ${supLink.currency === 'IDR' ? 'Rp ' : '$'}${priceToUse.toLocaleString()}`,
+      type: 'info'
     });
 
   const handleQtyChange = (index: number, qty: number) => {
