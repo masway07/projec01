@@ -361,10 +361,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     onClick={() => {
                                       if (hasNestedSubItems) {
                                         setOpenSubMenus(prev => ({ ...prev, [sub.id]: !prev[sub.id] }));
-                                        // Auto select first nested item if opening
-                                        if (!isNestedSubOpen) {
-                                          handleTabClick(sub.subItems![0].id);
-                                        }
+                                        handleTabClick(sub.id);
                                       } else {
                                         handleTabClick(sub.id);
                                       }
