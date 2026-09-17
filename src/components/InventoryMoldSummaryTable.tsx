@@ -3,9 +3,11 @@ import { InventoryItem } from '../types';
 
 interface Props {
   items: InventoryItem[];
+  startDate?: string;
+  endDate?: string;
 }
 
-export const InventoryMoldSummaryTable: React.FC<Props> = ({ items }) => {
+export const InventoryMoldSummaryTable: React.FC<Props> = ({ items, startDate, endDate }) => {
   const groups = [
     { code: '2RCF', name: 'CF Dies 2R (CF2R)', cat: 'Tools' },
     { code: '4RCF', name: 'CF Dies 4R (CFD4R)', cat: 'Tools' },
@@ -28,10 +30,26 @@ export const InventoryMoldSummaryTable: React.FC<Props> = ({ items }) => {
   ];
 
   const summary = useMemo(() => {
+    // Convert startDate and endDate to Date objects for comparison
+    const start = startDate ? new Date(startDate) : null;
+    if (start) start.setHours(0, 0, 0, 0);
+    const end = endDate ? new Date(endDate) : null;
+    if (end) end.setHours(23, 59, 59, 999);
+
     return groups.map(g => {
       const matching = items.filter(item => {
         const str = `${item.itemCode} ${item.partNo} ${item.name}`.toUpperCase();
-        return str.includes(g.code);
+        if (!str.includes(g.code)) return false;
+
+        if (start || end) {
+            const itemDateStr = item.updatedAt || item.createdAt;
+            if (itemDateStr) {
+                const itemDate = new Date(itemDateStr);
+                if (start && itemDate < start) return false;
+                if (end && itemDate > end) return false;
+            }
+        }
+        return true;
       });
 
       let begQty = 0, begAmt = 0;
@@ -61,7 +79,7 @@ export const InventoryMoldSummaryTable: React.FC<Props> = ({ items }) => {
         endQty, endAmt
       };
     });
-  }, [items]);
+  }, [items, startDate, endDate]);
 
   const currentMonth = new Date();
   const prevMonth = new Date();
@@ -144,49 +162,18 @@ export const InventoryMoldSummaryTable: React.FC<Props> = ({ items }) => {
               <td className="p-1 px-2 text-center">-</td>
             </tr>
 
-            {/* Audited Balance Row */}
-            <tr>
-              <td colSpan={2} className="p-1 px-2 font-bold whitespace-nowrap">Audited Balance /TB</td>
-              <td className="p-1 px-2 italic text-right">Accurate balance <span className="font-bold float-right">$</span></td>
-              <td className="p-1 px-2 italic font-bold text-right">2.450.735,07</td>
-              <td className="p-1 px-2 text-right font-bold">$</td>
-              <td className="p-1 px-2 italic font-bold text-right">91.242,19</td>
-              <td className="p-1 px-2"></td>
-              <td className="p-1 px-2"></td>
-              <td className="p-1 px-2"></td>
-              <td className="p-1 px-2"></td>
-              <td className="p-1 px-2 italic text-right">Accurate balance <span className="font-bold float-right">$</span></td>
-              <td className="p-1 px-2 italic font-bold text-right">2.430.181,65</td>
-            </tr>
-
-            {/* Different Row */}
-            <tr className="bg-yellow-300 font-bold italic border-b border-black">
-              <td colSpan={2} className="p-1 px-2"></td>
-              <td className="p-1 px-2 text-right">Different <span className="font-bold float-right">$</span></td>
-              <td className="p-1 px-2 text-right">-0,51</td>
-              <td className="p-1 px-2 text-right font-bold">$</td>
-              <td className="p-1 px-2 text-right">91.242,19</td>
-              <td className="p-1 px-2"></td>
-              <td className="p-1 px-2"></td>
-              <td className="p-1 px-2"></td>
-              <td className="p-1 px-2"></td>
-              <td className="p-1 px-2 text-right">Different <span className="font-bold float-right">$</span></td>
-              <td className="p-1 px-2 text-right">-2.430.181,65</td>
-            </tr>
-
             {/* Empty Spacer Row */}
             <tr>
               <td colSpan={12} className="h-4 bg-white border-0"></td>
             </tr>
-
             {/* Direct Fab cost rows */}
             <tr>
               <td colSpan={2} className="p-1 px-2">Direct Fab cost-Cons. tools</td>
               <td className="p-1 px-2 border-l-2 border-t-2 border-b border-black">
-                 <div className="flex justify-between w-full"><span>$</span> <span>60.142,60</span></div>
+                 <div className="flex justify-between w-full"><span>$</span> <span>-</span></div>
               </td>
               <td className="p-1 px-2 border-r-2 border-t-2 border-b border-black">
-                 <div className="flex justify-between w-full"><span>$</span> <span>28,42</span></div>
+                 <div className="flex justify-between w-full"><span>$</span> <span>-</span></div>
               </td>
               <td className="p-1 px-2 text-center">-</td>
               <td className="p-1 px-2 text-center">-</td>
@@ -200,7 +187,7 @@ export const InventoryMoldSummaryTable: React.FC<Props> = ({ items }) => {
             <tr>
               <td colSpan={2} className="p-1 px-2">Direct Fab cost-Fuel,Oil,Lubri</td>
               <td className="p-1 px-2 border-l-2 border-b border-black">
-                <div className="flex justify-between w-full"><span>$</span> <span>29.527,20</span></div>
+                <div className="flex justify-between w-full"><span>$</span> <span>-</span></div>
               </td>
               <td className="p-1 px-2 border-r-2 border-b border-black text-center"></td>
               <td className="p-1 px-2 text-center">-</td>
@@ -215,7 +202,7 @@ export const InventoryMoldSummaryTable: React.FC<Props> = ({ items }) => {
             <tr className="font-bold">
               <td colSpan={2} className="p-1 px-2"></td>
               <td className="p-1 px-2 border-l-2 border-b-2 border-black">
-                <div className="flex justify-between w-full"><span>$</span> <span>89.669,80</span></div>
+                <div className="flex justify-between w-full"><span>$</span> <span>-</span></div>
               </td>
               <td className="p-1 px-2 border-r-2 border-b-2 border-black text-center"></td>
               <td className="p-1 px-2 text-right"></td>
@@ -234,10 +221,9 @@ export const InventoryMoldSummaryTable: React.FC<Props> = ({ items }) => {
             <tr>
               <td colSpan={2}></td>
               <td className="p-1 px-2 text-center"></td>
-              <td className="p-1 px-2 border-b-2 border-black text-center font-bold">28,42</td>
+              <td className="p-1 px-2 border-b-2 border-black text-center font-bold"></td>
               <td colSpan={8}></td>
             </tr>
-
           </tbody>
         </table>
       </div>

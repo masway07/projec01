@@ -143,6 +143,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [locationFilter, setLocationFilter] = useState<string>('ALL');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
   // Active Rate for Valuation
   const currentYear = new Date().getFullYear().toString();
@@ -890,6 +892,24 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
         {/* Filters */}
         <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap">
+          {selectedCategory === 'mold_sparepart' && (
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-700">
+              <span className="font-semibold text-slate-500">Mulai:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-transparent font-bold text-slate-800 outline-none cursor-pointer"
+              />
+              <span className="font-semibold text-slate-500 ml-2">Akhir:</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-transparent font-bold text-slate-800 outline-none cursor-pointer"
+              />
+            </div>
+          )}
           {/* Status Filter */}
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-700">
             <Filter className="w-3.5 h-3.5 text-slate-400" />
@@ -932,9 +952,17 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
       {/* MAIN INVENTORY TABLE OR SUMMARY TABLE */}
       {selectedCategory === 'mold_sparepart' && !activeGroupId ? (
-        <InventoryMoldSummaryTable items={inventoryItems.filter(i => i.category === 'mold_sparepart')} />
+        <InventoryMoldSummaryTable 
+          items={inventoryItems.filter(i => i.category === 'mold_sparepart')} 
+          startDate={startDate}
+          endDate={endDate}
+        />
       ) : selectedCategory === 'mold_sparepart' && activeGroupId ? (
-        <InventoryMoldSubTable items={filteredItems} />
+        <InventoryMoldSubTable 
+          items={filteredItems} 
+          startDate={startDate}
+          endDate={endDate}
+        />
       ) : (
         <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">

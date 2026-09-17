@@ -3,9 +3,11 @@ import { InventoryItem } from '../types';
 
 interface Props {
   items: InventoryItem[];
+  startDate?: string;
+  endDate?: string;
 }
 
-export const InventoryMoldSubTable: React.FC<Props> = ({ items }) => {
+export const InventoryMoldSubTable: React.FC<Props> = ({ items, startDate, endDate }) => {
   const currentMonth = new Date();
   const prevMonth = new Date();
   prevMonth.setMonth(prevMonth.getMonth() - 1);
@@ -21,7 +23,25 @@ export const InventoryMoldSubTable: React.FC<Props> = ({ items }) => {
   const curMonthStr = formatMonth(currentMonth);
 
   const data = useMemo(() => {
-    return items.map(item => {
+    // Convert startDate and endDate to Date objects for comparison
+    const start = startDate ? new Date(startDate) : null;
+    if (start) start.setHours(0, 0, 0, 0);
+    const end = endDate ? new Date(endDate) : null;
+    if (end) end.setHours(23, 59, 59, 999);
+
+    const filteredItems = items.filter(item => {
+        if (start || end) {
+            const itemDateStr = item.updatedAt || item.createdAt;
+            if (itemDateStr) {
+                const itemDate = new Date(itemDateStr);
+                if (start && itemDate < start) return false;
+                if (end && itemDate > end) return false;
+            }
+        }
+        return true;
+    });
+
+    return filteredItems.map(item => {
       const begQty = item.beginningQty;
       const begAmt = begQty * item.unitCost;
       const purQty = item.inQty;
@@ -42,7 +62,7 @@ export const InventoryMoldSubTable: React.FC<Props> = ({ items }) => {
         endQty, endAmt
       };
     });
-  }, [items]);
+  }, [items, startDate, endDate]);
 
   return (
     <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xs mt-4">
