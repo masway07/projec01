@@ -1,0 +1,8 @@
+{
+  "name": "SmartBudget Control",
+  "description": "Sistem ERP & Budget Control komprehensif: Budget (Rencana Anggaran, Dept Planning, Realisasi), Purchase (Purchase Request, Purchase Order), Sales, Inventory, Fixed Asset, serta Master Data (Departemen, Supplier, Customer, Item Stock, Proses Produksi, COA, Rate Harian BI & KMK).",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
