@@ -20,7 +20,10 @@ import {
   CashBankAccount,
   CashBankReceipt,
   CashBankPayment,
-  ReturnFromProdItem
+  ReturnFromProdItem,
+  ReceiveItemOrder,
+  ReturnItemOrder,
+  PaymentPurchase
 } from '../types';
 
 export const DP_MONTHS: (keyof MonthlyDistribution)[] = [
@@ -2857,3 +2860,174 @@ export const DEFAULT_RETURN_FROM_PROD_ITEMS: ReturnFromProdItem[] = [
     updatedAt: '2026-03-18T11:45:00.000Z'
   }
 ];
+
+export const DEFAULT_RECEIVE_ITEM_ORDERS: ReceiveItemOrder[] = [
+  {
+    id: 'rio-001',
+    receiveNumber: 'RCV/2026/03/001',
+    date: '2026-03-15',
+    poNumber: 'PO-2026-001',
+    poId: 'po-001',
+    deliveryOrderNo: 'SJ-KS-88910',
+    deliveryOrderDate: '2026-03-15',
+    supplierCode: 'SUP-001',
+    supplierName: 'PT. Krakatau Steel Tbk',
+    warehouseLocation: 'WH-RM-01 (Raw Material)',
+    receivedBy: 'Budi Santoso (Warehouse)',
+    driverName: 'Eko Prasetyo',
+    vehiclePlateNumber: 'B 9123 KDF',
+    status: 'received',
+    qcStatus: 'passed',
+    qcInspector: 'Dedi Kurniawan (QC)',
+    items: [
+      {
+        id: 'rioi-1',
+        itemCode: 'RM-001',
+        itemName: 'Steel Coil SPCC-SD 1.2 x 1219mm',
+        description: 'Bahan baku utama stamping bracket',
+        poQty: 5000,
+        receivedQty: 5000,
+        acceptedQty: 5000,
+        rejectedQty: 0,
+        uom: 'KG',
+        location: 'WH-RM-01',
+        condition: 'good',
+        notes: 'Sesuai sertifikat inspeksi QC'
+      }
+    ],
+    notes: 'Penerimaan bahan baku Steel Coil SPCC-SD lengkap kondisi prima',
+    checkedBy: 'Staff Finance & Accounting',
+    checkedAt: '2026-03-15T10:00:00.000Z',
+    approvedBy: 'Administrator Budget',
+    approvedAt: '2026-03-15T11:00:00.000Z',
+    createdAt: '2026-03-15T09:30:00.000Z',
+    updatedAt: '2026-03-15T11:00:00.000Z'
+  },
+  {
+    id: 'rio-002',
+    receiveNumber: 'RCV/2026/03/002',
+    date: '2026-03-18',
+    poNumber: 'PO-2026-002',
+    poId: 'po-002',
+    deliveryOrderNo: 'SJ-INA-2026/902',
+    deliveryOrderDate: '2026-03-18',
+    supplierCode: 'SUP-002',
+    supplierName: 'PT. Inalum Aluminium',
+    warehouseLocation: 'WH-RM-02 (Aluminum)',
+    receivedBy: 'Ahmad Ridwan (Warehouse)',
+    driverName: 'Suryanto',
+    vehiclePlateNumber: 'T 8842 AB',
+    status: 'partial',
+    qcStatus: 'passed',
+    qcInspector: 'Dedi Kurniawan (QC)',
+    items: [
+      {
+        id: 'rioi-2',
+        itemCode: 'RM-002',
+        itemName: 'Aluminum Ingot ADC-12 High Purity',
+        description: 'Casting & machining automotive housing',
+        poQty: 4000,
+        receivedQty: 2500,
+        acceptedQty: 2500,
+        rejectedQty: 0,
+        uom: 'KG',
+        location: 'WH-RM-02',
+        condition: 'good',
+        notes: 'Sisa 1.500 KG dikirim pengiriman tahap dua'
+      }
+    ],
+    notes: 'Penerimaan parsial pengiriman tahap 1',
+    createdAt: '2026-03-18T14:00:00.000Z',
+    updatedAt: '2026-03-18T14:45:00.000Z'
+  }
+];
+
+export const DEFAULT_RETURN_ITEM_ORDERS: ReturnItemOrder[] = [
+  {
+    id: 'ret-pur-001',
+    returnNumber: 'RTO/2026/03/001',
+    date: '2026-03-19',
+    poNumber: 'PO-2026-001',
+    receiveNumber: 'RCV/2026/03/001',
+    deliveryOrderNo: 'SJ-RET-001',
+    supplierCode: 'SUP-001',
+    supplierName: 'PT. Krakatau Steel Tbk',
+    supplierAddress: 'Kawasan Industri Cilegon, Banten',
+    supplierContact: '0254-392111',
+    reason: 'Ketebalan lembar plat di luar toleransi spesifikasi teknis drawing (+0.15mm)',
+    returnType: 'replacement',
+    status: 'completed',
+    currency: 'USD',
+    totalReturnAmount: 230.00,
+    shippingCarrier: 'Ekspedisi Internal Logistik',
+    trackingNumber: 'TRK-RET-20260319-01',
+    items: [
+      {
+        id: 'reti-1',
+        itemCode: 'RM-001',
+        itemName: 'Steel Coil SPCC-SD 1.2 x 1219mm',
+        description: 'Bahan baku lembar plat coil',
+        qty: 200,
+        uom: 'KG',
+        unitPrice: 1.15,
+        totalPrice: 230.00,
+        defectReason: 'Ketebalan di atas toleransi maksimum drawing (+0.15mm)',
+        condition: 'defect',
+        notes: 'Supplier konfirmasi ganti barang batch baru minggu depan'
+      }
+    ],
+    notes: 'Supplier menyetujui replacement pengiriman minggu depan',
+    checkedBy: 'Staff Finance & Accounting',
+    checkedAt: '2026-03-19T10:30:00.000Z',
+    approvedBy: 'Administrator Budget',
+    approvedAt: '2026-03-19T11:00:00.000Z',
+    createdAt: '2026-03-19T10:00:00.000Z',
+    updatedAt: '2026-03-19T11:30:00.000Z'
+  }
+];
+
+export const DEFAULT_PAYMENT_PURCHASES: PaymentPurchase[] = [
+  {
+    id: 'pay-pur-001',
+    paymentNumber: 'PAY/2026/03/001',
+    paymentDate: '2026-03-20',
+    supplierCode: 'SUP-001',
+    supplierName: 'PT. Krakatau Steel Tbk',
+    bankAccountId: 'cba_01',
+    bankAccountName: 'BCA Giro Operasional (IDR)',
+    paymentMethod: 'Transfer',
+    refNo: 'TRF-BCA-20260320-998',
+    currency: 'USD',
+    exchangeRate: 16273.56,
+    totalPaidAmount: 5750.00,
+    totalPaidAmountIDR: 93572970,
+    status: 'processed',
+    beneficiaryBank: 'Bank Mandiri',
+    beneficiaryAccount: '122-00-9988776-5',
+    beneficiaryName: 'PT Krakatau Steel Tbk',
+    invoices: [
+      {
+        id: 'ppi-1',
+        invoiceId: 'pinv-001',
+        invoiceNo: 'INV/KS/2026/03/01',
+        poNumber: 'PO-2026-001',
+        invoiceDate: '2026-03-15',
+        invoiceDueDate: '2026-04-15',
+        invoiceTotal: 5750.00,
+        previouslyPaid: 0,
+        paymentAmount: 5750.00,
+        remainingBalance: 0,
+        notes: 'Pelunasan tagihan invoice bahan baku SPCC'
+      }
+    ],
+    notes: 'Pelunasan tagihan invoice pembelian bahan baku SPCC',
+    processedBy: 'Staff Finance & Accounting',
+    checkedBy: 'Staff Finance & Accounting',
+    checkedAt: '2026-03-20T11:15:00.000Z',
+    approvedBy: 'Administrator Budget',
+    approvedAt: '2026-03-20T11:30:00.000Z',
+    createdAt: '2026-03-20T11:00:00.000Z',
+    updatedAt: '2026-03-20T11:30:00.000Z'
+  }
+];
+

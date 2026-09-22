@@ -32,11 +32,24 @@ interface FixedAssetViewProps {
   onBatchImportFixedAsset?: (items: Partial<FixedAssetItem>[]) => void;
   userDept?: string;
   companySettings?: CompanySettings;
+  activeCategory?: string;
+  onSelectCategory?: (category: string) => void;
 }
 
 const MONTHS: (keyof FixedAssetMonthlyDepreciation)[] = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
+
+export const FIXED_ASSET_CATEGORIES: { id: string; label: string; desc: string }[] = [
+  { id: 'all', label: 'Semua Asset', desc: 'Semua kelompok aset tetap' },
+  { id: 'land', label: 'Land', desc: 'Tanah & Lahan Usaha' },
+  { id: 'building', label: 'Building', desc: 'Gedung, Bangunan & Renovasi' },
+  { id: 'vehicle', label: 'Vehicle', desc: 'Kendaraan Operasional & Logistik' },
+  { id: 'electronic', label: 'Electronic', desc: 'Peralatan Elektronik, Komputer & IT' },
+  { id: 'software', label: 'Software', desc: 'Lisensi Perangkat Lunak & Sistem' },
+  { id: 'intangible_asset', label: 'Intangible Asset', desc: 'Aset Takberwujud, Hak Paten & Merek' },
+  { id: 'right_of_use', label: 'Right of use', desc: 'Aset Hak Guna / Sewa Pembiayaan' }
 ];
 
 export const FixedAssetView: React.FC<FixedAssetViewProps> = ({
@@ -49,19 +62,57 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({
   onDeleteFixedAsset,
   onBatchImportFixedAsset,
   userDept,
-  companySettings
+  companySettings,
+  activeCategory = 'all',
+  onSelectCategory
 }) => {
   const [selectedDept, setSelectedDept] = useState<string>(userDept || '');
   const [selectedYear, setSelectedYear] = useState<number>(2026);
+  const [selectedCategory, setSelectedCategory] = useState<string>(activeCategory || 'all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
   const [editingItem, setEditingItem] = useState<FixedAssetItem | null>(null);
 
+  // Sync with prop when external category changes
+  React.useEffect(() => {
+    if (activeCategory) {
+      setSelectedCategory(activeCategory);
+    }
+  }, [activeCategory]);
+
+  const handleCategoryChange = (cat: string) => {
+    setSelectedCategory(cat);
+    if (onSelectCategory) {
+      onSelectCategory(cat);
+    }
+  };
+
+  // Helper to determine asset category
+  const getItemCategory = (item: FixedAssetItem): string => {
+    if (item.assetCategory) return item.assetCategory;
+    const desc = (item.description || item.name || '').toLowerCase();
+    const coa = (item.coaCode || '') + ' ' + (item.coaName || '').toLowerCase();
+    if (desc.includes('tanah') || desc.includes('land') || coa.includes('land') || coa.includes('tanah')) return 'land';
+    if (desc.includes('building') || desc.includes('gedung') || desc.includes('bangunan') || coa.includes('building') || coa.includes('gedung')) return 'building';
+    if (desc.includes('kendaraan') || desc.includes('vehicle') || desc.includes('car') || desc.includes('truck') || desc.includes('motor') || coa.includes('vehicle') || coa.includes('kendaraan')) return 'vehicle';
+    if (desc.includes('software') || desc.includes('aplikasi') || desc.includes('lisensi') || desc.includes('license') || coa.includes('software')) return 'software';
+    if (desc.includes('right of use') || desc.includes('sewa') || desc.includes('lease') || coa.includes('lease') || coa.includes('hak guna')) return 'right_of_use';
+    if (desc.includes('patent') || desc.includes('intangible') || desc.includes('takberwujud') || coa.includes('intangible')) return 'intangible_asset';
+    return 'electronic'; // default machinery & equipment / electronic
+  };
+
   // Filter items
   const filteredItems = useMemo(() => {
     return fixedAssetItems.filter(item => {
       if (selectedDept && item.deptCode !== selectedDept) return false;
+      
+      // Category filter
+      if (selectedCategory && selectedCategory !== 'all') {
+        const itemCat = getItemCategory(item);
+        if (itemCat !== selectedCategory) return false;
+      }
+
       if (searchTerm.trim()) {
         const term = searchTerm.toLowerCase();
         const matchDesc = (item.description || item.name || '').toLowerCase().includes(term);
@@ -72,7 +123,7 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({
       }
       return true;
     });
-  }, [fixedAssetItems, selectedDept, searchTerm]);
+  }, [fixedAssetItems, selectedDept, selectedCategory, searchTerm]);
 
   // Aggregate column totals
   const totals = useMemo(() => {
@@ -526,6 +577,36 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({
             <span>Export PDF</span>
           </button>
         </div>
+      </div>
+
+      {/* Submenu Categories Navigation Bar */}
+      <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-1.5 overflow-x-auto">
+        {FIXED_ASSET_CATEGORIES.map(cat => {
+          const isCatActive = selectedCategory === cat.id;
+          const count = cat.id === 'all'
+            ? fixedAssetItems.length
+            : fixedAssetItems.filter(i => getItemCategory(i) === cat.id).length;
+
+          return (
+            <button
+              key={cat.id}
+              onClick={() => handleCategoryChange(cat.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center gap-2 transition cursor-pointer ${
+                isCatActive
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/80'
+              }`}
+              title={cat.desc}
+            >
+              <span>{cat.label}</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                isCatActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* KPI Cards */}

@@ -29,6 +29,9 @@ import { MasterRateHarianView } from './components/MasterRateHarianView';
 import { PurchaseRequestView } from './components/PurchaseRequestView';
 import { PurchaseOrderView } from './components/PurchaseOrderView';
 import { PurchaseInvoiceView } from './components/PurchaseInvoiceView';
+import { ReceiveItemOrderView } from './components/ReceiveItemOrderView';
+import { ReturnItemOrderView } from './components/ReturnItemOrderView';
+import { PaymentPurchaseView } from './components/PaymentPurchaseView';
 import { CashBankView } from './components/CashBankView';
 import {
   AppState,
@@ -56,6 +59,9 @@ import {
   PurchaseRequest,
   PurchaseOrder,
   PurchaseInvoice,
+  ReceiveItemOrder,
+  ReturnItemOrder,
+  PaymentPurchase,
   CashBankAccount,
   CashBankReceipt,
   CashBankPayment,
@@ -78,6 +84,9 @@ import {
   DEFAULT_PURCHASE_REQUESTS,
   DEFAULT_PURCHASE_ORDERS,
   DEFAULT_PURCHASE_INVOICES,
+  DEFAULT_RECEIVE_ITEM_ORDERS,
+  DEFAULT_RETURN_ITEM_ORDERS,
+  DEFAULT_PAYMENT_PURCHASES,
   DEFAULT_CASH_BANK_ACCOUNTS,
   DEFAULT_CASH_BANK_RECEIPTS,
   DEFAULT_CASH_BANK_PAYMENTS,
@@ -263,6 +272,15 @@ export default function App() {
           purchaseInvoices: Array.isArray(parsed.purchaseInvoices)
             ? parsed.purchaseInvoices
             : DEFAULT_PURCHASE_INVOICES,
+          receiveItemOrders: Array.isArray(parsed.receiveItemOrders)
+            ? parsed.receiveItemOrders
+            : DEFAULT_RECEIVE_ITEM_ORDERS,
+          returnItemOrders: Array.isArray(parsed.returnItemOrders)
+            ? parsed.returnItemOrders
+            : DEFAULT_RETURN_ITEM_ORDERS,
+          paymentPurchases: Array.isArray(parsed.paymentPurchases)
+            ? parsed.paymentPurchases
+            : DEFAULT_PAYMENT_PURCHASES,
           cashBankAccounts: Array.isArray(parsed.cashBankAccounts)
             ? parsed.cashBankAccounts
             : DEFAULT_CASH_BANK_ACCOUNTS,
@@ -303,6 +321,9 @@ export default function App() {
       purchaseRequests: DEFAULT_PURCHASE_REQUESTS,
       purchaseOrders: DEFAULT_PURCHASE_ORDERS,
       purchaseInvoices: DEFAULT_PURCHASE_INVOICES,
+      receiveItemOrders: DEFAULT_RECEIVE_ITEM_ORDERS,
+      returnItemOrders: DEFAULT_RETURN_ITEM_ORDERS,
+      paymentPurchases: DEFAULT_PAYMENT_PURCHASES,
       cashBankAccounts: DEFAULT_CASH_BANK_ACCOUNTS,
       cashBankReceipts: DEFAULT_CASH_BANK_RECEIPTS,
       cashBankPayments: DEFAULT_CASH_BANK_PAYMENTS,
@@ -2393,6 +2414,359 @@ export default function App() {
     showToast(`Purchase Invoice ${target.invoiceNo} ditolak.`, 'error');
   };
 
+  // ===================== RECEIVE ITEM ORDER (GOODS RECEIPT) HANDLERS =====================
+  const handleAddReceiveItemOrder = (order: Omit<ReceiveItemOrder, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newOrder: ReceiveItemOrder = {
+      ...order,
+      id: `rio_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      receiveItemOrders: [newOrder, ...(prev.receiveItemOrders || [])]
+    }), {
+      action: 'CREATE',
+      module: 'Receive Item Order',
+      details: `Menambah Penerimaan Barang [${newOrder.receiveNumber}] dari ${newOrder.supplierName}`
+    });
+    showToast(`Penerimaan barang ${newOrder.receiveNumber} berhasil dicatat!`, 'success');
+  };
+
+  const handleUpdateReceiveItemOrder = (id: string, updates: Partial<ReceiveItemOrder>) => {
+    const target = (appState.receiveItemOrders || []).find(r => r.id === id);
+    if (!target) return;
+    const updated: ReceiveItemOrder = {
+      ...target,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      receiveItemOrders: (prev.receiveItemOrders || []).map(r => r.id === id ? updated : r)
+    }), {
+      action: 'UPDATE',
+      module: 'Receive Item Order',
+      details: `Memperbarui Penerimaan Barang [${updated.receiveNumber}]`
+    });
+    showToast(`Penerimaan barang ${updated.receiveNumber} berhasil diperbarui!`, 'success');
+  };
+
+  const handleDeleteReceiveItemOrder = (id: string) => {
+    const target = (appState.receiveItemOrders || []).find(r => r.id === id);
+    updateAndSyncState(prev => ({
+      ...prev,
+      receiveItemOrders: (prev.receiveItemOrders || []).filter(r => r.id !== id)
+    }), {
+      action: 'DELETE',
+      module: 'Receive Item Order',
+      details: `Menghapus Penerimaan Barang [${target?.receiveNumber || id}]`
+    });
+    showToast('Penerimaan barang berhasil dihapus.', 'info');
+  };
+
+  const handleCheckReceiveItemOrder = (id: string, userName: string) => {
+    const target = (appState.receiveItemOrders || []).find(r => r.id === id);
+    if (!target) return;
+    const updated: ReceiveItemOrder = {
+      ...target,
+      checkedBy: userName || currentUser?.name || 'Checker',
+      checkedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      receiveItemOrders: (prev.receiveItemOrders || []).map(r => r.id === id ? updated : r)
+    }), {
+      action: 'UPDATE',
+      module: 'Receive Item Order',
+      details: `Memverifikasi (Checked) Penerimaan Barang [${target.receiveNumber}]`
+    });
+    showToast(`Penerimaan ${target.receiveNumber} berhasil diverifikasi!`, 'success');
+  };
+
+  const handleApproveReceiveItemOrder = (id: string, userName: string) => {
+    const target = (appState.receiveItemOrders || []).find(r => r.id === id);
+    if (!target) return;
+    const updated: ReceiveItemOrder = {
+      ...target,
+      status: 'received',
+      approvedBy: userName || currentUser?.name || 'Approver',
+      approvedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      receiveItemOrders: (prev.receiveItemOrders || []).map(r => r.id === id ? updated : r)
+    }), {
+      action: 'APPROVE',
+      module: 'Receive Item Order',
+      details: `Menyetujui (Approved) Penerimaan Barang [${target.receiveNumber}]`
+    });
+    showToast(`Penerimaan ${target.receiveNumber} telah disetujui!`, 'success');
+  };
+
+  const handleRejectReceiveItemOrder = (id: string, userName: string, reason: string) => {
+    const target = (appState.receiveItemOrders || []).find(r => r.id === id);
+    if (!target) return;
+    const updated: ReceiveItemOrder = {
+      ...target,
+      status: 'rejected',
+      rejectedBy: userName || currentUser?.name || 'Approver',
+      rejectedAt: new Date().toISOString(),
+      rejectionReason: reason,
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      receiveItemOrders: (prev.receiveItemOrders || []).map(r => r.id === id ? updated : r)
+    }), {
+      action: 'REJECT',
+      module: 'Receive Item Order',
+      details: `Menolak Penerimaan Barang [${target.receiveNumber}]: ${reason}`
+    });
+    showToast(`Penerimaan ${target.receiveNumber} ditolak.`, 'error');
+  };
+
+  // ===================== RETURN ITEM ORDER HANDLERS =====================
+  const handleAddReturnItemOrder = (order: Omit<ReturnItemOrder, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newOrder: ReturnItemOrder = {
+      ...order,
+      id: `rto_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      returnItemOrders: [newOrder, ...(prev.returnItemOrders || [])]
+    }), {
+      action: 'CREATE',
+      module: 'Return Item Order',
+      details: `Menambah Retur Pembelian [${newOrder.returnNumber}] ke ${newOrder.supplierName}`
+    });
+    showToast(`Retur pembelian ${newOrder.returnNumber} berhasil dibuat!`, 'success');
+  };
+
+  const handleUpdateReturnItemOrder = (id: string, updates: Partial<ReturnItemOrder>) => {
+    const target = (appState.returnItemOrders || []).find(r => r.id === id);
+    if (!target) return;
+    const updated: ReturnItemOrder = {
+      ...target,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      returnItemOrders: (prev.returnItemOrders || []).map(r => r.id === id ? updated : r)
+    }), {
+      action: 'UPDATE',
+      module: 'Return Item Order',
+      details: `Memperbarui Retur Pembelian [${updated.returnNumber}]`
+    });
+    showToast(`Retur pembelian ${updated.returnNumber} berhasil diperbarui!`, 'success');
+  };
+
+  const handleDeleteReturnItemOrder = (id: string) => {
+    const target = (appState.returnItemOrders || []).find(r => r.id === id);
+    updateAndSyncState(prev => ({
+      ...prev,
+      returnItemOrders: (prev.returnItemOrders || []).filter(r => r.id !== id)
+    }), {
+      action: 'DELETE',
+      module: 'Return Item Order',
+      details: `Menghapus Retur Pembelian [${target?.returnNumber || id}]`
+    });
+    showToast('Retur pembelian berhasil dihapus.', 'info');
+  };
+
+  const handleCheckReturnItemOrder = (id: string, userName: string) => {
+    const target = (appState.returnItemOrders || []).find(r => r.id === id);
+    if (!target) return;
+    const updated: ReturnItemOrder = {
+      ...target,
+      checkedBy: userName || currentUser?.name || 'Checker',
+      checkedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      returnItemOrders: (prev.returnItemOrders || []).map(r => r.id === id ? updated : r)
+    }), {
+      action: 'UPDATE',
+      module: 'Return Item Order',
+      details: `Memverifikasi (Checked) Retur Pembelian [${target.returnNumber}]`
+    });
+    showToast(`Retur ${target.returnNumber} berhasil diverifikasi!`, 'success');
+  };
+
+  const handleApproveReturnItemOrder = (id: string, userName: string) => {
+    const target = (appState.returnItemOrders || []).find(r => r.id === id);
+    if (!target) return;
+    const updated: ReturnItemOrder = {
+      ...target,
+      status: 'completed',
+      approvedBy: userName || currentUser?.name || 'Approver',
+      approvedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      returnItemOrders: (prev.returnItemOrders || []).map(r => r.id === id ? updated : r)
+    }), {
+      action: 'APPROVE',
+      module: 'Return Item Order',
+      details: `Menyetujui (Approved) Retur Pembelian [${target.returnNumber}]`
+    });
+    showToast(`Retur ${target.returnNumber} telah disetujui!`, 'success');
+  };
+
+  const handleRejectReturnItemOrder = (id: string, userName: string, reason: string) => {
+    const target = (appState.returnItemOrders || []).find(r => r.id === id);
+    if (!target) return;
+    const updated: ReturnItemOrder = {
+      ...target,
+      status: 'cancelled',
+      rejectedBy: userName || currentUser?.name || 'Approver',
+      rejectedAt: new Date().toISOString(),
+      rejectionReason: reason,
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      returnItemOrders: (prev.returnItemOrders || []).map(r => r.id === id ? updated : r)
+    }), {
+      action: 'REJECT',
+      module: 'Return Item Order',
+      details: `Menolak Retur Pembelian [${target.returnNumber}]: ${reason}`
+    });
+    showToast(`Retur ${target.returnNumber} ditolak.`, 'error');
+  };
+
+  // ===================== PAYMENT PURCHASE HANDLERS =====================
+  const handleAddPaymentPurchase = (payment: Omit<PaymentPurchase, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newPayment: PaymentPurchase = {
+      ...payment,
+      id: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    // Deduct cash/bank account balance if processed
+    updateAndSyncState(prev => {
+      let updatedAccounts = prev.cashBankAccounts || [];
+      if (newPayment.status === 'processed' || newPayment.status === 'reconciled') {
+        updatedAccounts = updatedAccounts.map(acc => {
+          if (acc.id === newPayment.bankAccountId) {
+            const deduction = newPayment.currency === acc.currency ? newPayment.totalPaidAmount : newPayment.totalPaidAmountIDR;
+            return {
+              ...acc,
+              currentBalance: acc.currentBalance - deduction
+            };
+          }
+          return acc;
+        });
+      }
+      return {
+        ...prev,
+        cashBankAccounts: updatedAccounts,
+        paymentPurchases: [newPayment, ...(prev.paymentPurchases || [])]
+      };
+    }, {
+      action: 'CREATE',
+      module: 'Payment Purchase',
+      details: `Menambah Pembayaran Hutang [${newPayment.paymentNumber}] senilai ${newPayment.currency} ${newPayment.totalPaidAmount.toLocaleString()}`
+    });
+    showToast(`Pembayaran ${newPayment.paymentNumber} berhasil dicatat!`, 'success');
+  };
+
+  const handleUpdatePaymentPurchase = (id: string, updates: Partial<PaymentPurchase>) => {
+    const target = (appState.paymentPurchases || []).find(p => p.id === id);
+    if (!target) return;
+    const updated: PaymentPurchase = {
+      ...target,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      paymentPurchases: (prev.paymentPurchases || []).map(p => p.id === id ? updated : p)
+    }), {
+      action: 'UPDATE',
+      module: 'Payment Purchase',
+      details: `Memperbarui Pembayaran Hutang [${updated.paymentNumber}]`
+    });
+    showToast(`Pembayaran ${updated.paymentNumber} berhasil diperbarui!`, 'success');
+  };
+
+  const handleDeletePaymentPurchase = (id: string) => {
+    const target = (appState.paymentPurchases || []).find(p => p.id === id);
+    updateAndSyncState(prev => {
+      let updatedAccounts = prev.cashBankAccounts || [];
+      if (target && (target.status === 'processed' || target.status === 'reconciled')) {
+        updatedAccounts = updatedAccounts.map(acc => {
+          if (acc.id === target.bankAccountId) {
+            const rollbackAmount = target.currency === acc.currency ? target.totalPaidAmount : target.totalPaidAmountIDR;
+            return {
+              ...acc,
+              currentBalance: acc.currentBalance + rollbackAmount
+            };
+          }
+          return acc;
+        });
+      }
+      return {
+        ...prev,
+        cashBankAccounts: updatedAccounts,
+        paymentPurchases: (prev.paymentPurchases || []).filter(p => p.id !== id)
+      };
+    }, {
+      action: 'DELETE',
+      module: 'Payment Purchase',
+      details: `Menghapus Pembayaran Hutang [${target?.paymentNumber || id}]`
+    });
+    showToast('Pembayaran berhasil dihapus.', 'info');
+  };
+
+  const handleCheckPaymentPurchase = (id: string, userName: string) => {
+    const target = (appState.paymentPurchases || []).find(p => p.id === id);
+    if (!target) return;
+    const updated: PaymentPurchase = {
+      ...target,
+      checkedBy: userName || currentUser?.name || 'Checker',
+      checkedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      paymentPurchases: (prev.paymentPurchases || []).map(p => p.id === id ? updated : p)
+    }), {
+      action: 'UPDATE',
+      module: 'Payment Purchase',
+      details: `Memverifikasi (Checked) Pembayaran Hutang [${target.paymentNumber}]`
+    });
+    showToast(`Pembayaran ${target.paymentNumber} berhasil diverifikasi!`, 'success');
+  };
+
+  const handleApprovePaymentPurchase = (id: string, userName: string) => {
+    const target = (appState.paymentPurchases || []).find(p => p.id === id);
+    if (!target) return;
+    const updated: PaymentPurchase = {
+      ...target,
+      status: 'processed',
+      approvedBy: userName || currentUser?.name || 'Approver',
+      approvedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      paymentPurchases: (prev.paymentPurchases || []).map(p => p.id === id ? updated : p)
+    }), {
+      action: 'APPROVE',
+      module: 'Payment Purchase',
+      details: `Menyetujui (Approved) Pembayaran Hutang [${target.paymentNumber}]`
+    });
+    showToast(`Pembayaran ${target.paymentNumber} telah disetujui!`, 'success');
+  };
+
   // ===================== BACKUP & RESTORE HANDLERS =====================
   const handleRestoreState = (newState: AppState) => {
     updateAndSyncState(() => ({
@@ -2419,6 +2793,9 @@ export default function App() {
       purchaseRequests: Array.isArray(newState.purchaseRequests) ? newState.purchaseRequests : DEFAULT_PURCHASE_REQUESTS,
       purchaseOrders: Array.isArray(newState.purchaseOrders) ? newState.purchaseOrders : DEFAULT_PURCHASE_ORDERS,
       purchaseInvoices: Array.isArray(newState.purchaseInvoices) ? newState.purchaseInvoices : DEFAULT_PURCHASE_INVOICES,
+      receiveItemOrders: Array.isArray(newState.receiveItemOrders) ? newState.receiveItemOrders : DEFAULT_RECEIVE_ITEM_ORDERS,
+      returnItemOrders: Array.isArray(newState.returnItemOrders) ? newState.returnItemOrders : DEFAULT_RETURN_ITEM_ORDERS,
+      paymentPurchases: Array.isArray(newState.paymentPurchases) ? newState.paymentPurchases : DEFAULT_PAYMENT_PURCHASES,
       cashBankAccounts: Array.isArray(newState.cashBankAccounts) ? newState.cashBankAccounts : DEFAULT_CASH_BANK_ACCOUNTS,
       cashBankReceipts: Array.isArray(newState.cashBankReceipts) ? newState.cashBankReceipts : DEFAULT_CASH_BANK_RECEIPTS,
       cashBankPayments: Array.isArray(newState.cashBankPayments) ? newState.cashBankPayments : DEFAULT_CASH_BANK_PAYMENTS,
@@ -2454,6 +2831,9 @@ export default function App() {
       purchaseRequests: DEFAULT_PURCHASE_REQUESTS,
       purchaseOrders: DEFAULT_PURCHASE_ORDERS,
       purchaseInvoices: DEFAULT_PURCHASE_INVOICES,
+      receiveItemOrders: DEFAULT_RECEIVE_ITEM_ORDERS,
+      returnItemOrders: DEFAULT_RETURN_ITEM_ORDERS,
+      paymentPurchases: DEFAULT_PAYMENT_PURCHASES,
       cashBankAccounts: DEFAULT_CASH_BANK_ACCOUNTS,
       cashBankReceipts: DEFAULT_CASH_BANK_RECEIPTS,
       cashBankPayments: DEFAULT_CASH_BANK_PAYMENTS,
@@ -2664,6 +3044,7 @@ export default function App() {
   }
 
   // Check if activeTab is permitted for currentUser
+  const isFixedAssetTab = activeTab === 'fixedAsset' || activeTab.startsWith('fixed-asset');
   const isInventoryTab = activeTab === 'inventory' || activeTab.startsWith('inventory-') || activeTab.startsWith('mold-');
   const isSalesTab =
     activeTab === 'sales' ||
@@ -2686,7 +3067,13 @@ export default function App() {
     activeTab === 'purchaseOrder' ||
     activeTab === 'purchase-order' ||
     activeTab === 'purchaseInvoice' ||
-    activeTab === 'purchase-invoice';
+    activeTab === 'purchase-invoice' ||
+    activeTab === 'receive-item-order' ||
+    activeTab === 'receiveItemOrder' ||
+    activeTab === 'return-item-order' ||
+    activeTab === 'returnItemOrder' ||
+    activeTab === 'payment-purchase' ||
+    activeTab === 'paymentPurchase';
 
   const isCashBankTab =
     activeTab === 'cashBank' ||
@@ -2708,7 +3095,9 @@ export default function App() {
 
   const isTabPermitted =
     currentUser.role === 'admin' ||
-    (isInventoryTab
+    (isFixedAssetTab
+      ? (currentUser.permissions.includes('fixedAsset') || currentUser.role === 'finance' || currentUser.role === 'dept_user')
+      : isInventoryTab
       ? currentUser.permissions.includes('inventory')
       : isSalesTab
       ? (currentUser.permissions.includes('sales') ||
@@ -2720,7 +3109,12 @@ export default function App() {
          currentUser.permissions.includes('purchaseRequest') ||
          currentUser.permissions.includes('purchaseOrder') ||
          currentUser.permissions.includes('purchaseInvoice') ||
-         currentUser.permissions.includes('purchase-invoice'))
+         currentUser.permissions.includes('purchase-invoice') ||
+         currentUser.permissions.includes('receive-item-order') ||
+         currentUser.permissions.includes('return-item-order') ||
+         currentUser.permissions.includes('payment-purchase') ||
+         currentUser.role === 'finance' ||
+         currentUser.role === 'dept_user')
       : isCashBankTab
       ? (currentUser.permissions.includes('cashBank') ||
          currentUser.permissions.includes('bukuBank') ||
@@ -2740,6 +3134,17 @@ export default function App() {
          currentUser.role === 'finance' ||
          currentUser.role === 'dept_user')
       : currentUser.permissions.includes(activeTab as any));
+
+  const getFixedAssetCategoryFromTab = (tab: string): string => {
+    if (tab === 'fixed-asset-land') return 'land';
+    if (tab === 'fixed-asset-building') return 'building';
+    if (tab === 'fixed-asset-vehicle') return 'vehicle';
+    if (tab === 'fixed-asset-electronic') return 'electronic';
+    if (tab === 'fixed-asset-software') return 'software';
+    if (tab === 'fixed-asset-intangible') return 'intangible_asset';
+    if (tab === 'fixed-asset-right-of-use') return 'right_of_use';
+    return 'all';
+  };
 
   const getInventoryCategoryFromTab = (tab: string): InventoryCategory => {
     if (tab === 'inventory-mold-sparepart' || tab.startsWith('mold-')) return 'mold_sparepart';
@@ -2925,7 +3330,7 @@ export default function App() {
               />
             )}
 
-            {isTabPermitted && activeTab === 'fixedAsset' && (
+            {isTabPermitted && isFixedAssetTab && (
               <FixedAssetView
                 fixedAssetItems={appState.fixedAssetItems || []}
                 departments={appState.departments}
@@ -2937,6 +3342,8 @@ export default function App() {
                 onBatchImportFixedAsset={handleBatchImportFixedAsset}
                 userDept={currentUser.deptCode}
                 companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
+                activeCategory={getFixedAssetCategoryFromTab(activeTab)}
+                onSelectCategory={cat => setActiveTab(cat === 'all' ? 'fixedAsset' : `fixed-asset-${cat.replace(/_/g, '-')}`)}
               />
             )}
 
@@ -3108,6 +3515,62 @@ export default function App() {
                 onApproveInvoice={handleApprovePurchaseInvoice}
                 onRejectInvoice={handleRejectPurchaseInvoice}
                 activePurchaseTab="purchase-invoice"
+                onSwitchPurchaseTab={tab => setActiveTab(tab)}
+              />
+            )}
+
+            {isTabPermitted && (activeTab === 'receive-item-order' || activeTab === 'receiveItemOrder') && (
+              <ReceiveItemOrderView
+                receiveOrders={appState.receiveItemOrders || DEFAULT_RECEIVE_ITEM_ORDERS}
+                purchaseOrders={appState.purchaseOrders || []}
+                suppliers={appState.suppliers || []}
+                itemStocks={appState.itemStocks || []}
+                currentUser={currentUser}
+                companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
+                onAddReceiveOrder={handleAddReceiveItemOrder}
+                onUpdateReceiveOrder={handleUpdateReceiveItemOrder}
+                onDeleteReceiveOrder={handleDeleteReceiveItemOrder}
+                onCheckReceiveOrder={handleCheckReceiveItemOrder}
+                onApproveReceiveOrder={handleApproveReceiveItemOrder}
+                onRejectReceiveOrder={handleRejectReceiveItemOrder}
+                activePurchaseTab="receive-item-order"
+                onSwitchPurchaseTab={tab => setActiveTab(tab)}
+              />
+            )}
+
+            {isTabPermitted && (activeTab === 'return-item-order' || activeTab === 'returnItemOrder') && (
+              <ReturnItemOrderView
+                returnOrders={appState.returnItemOrders || DEFAULT_RETURN_ITEM_ORDERS}
+                purchaseOrders={appState.purchaseOrders || []}
+                receiveOrders={appState.receiveItemOrders || DEFAULT_RECEIVE_ITEM_ORDERS}
+                suppliers={appState.suppliers || []}
+                currentUser={currentUser}
+                companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
+                onAddReturnOrder={handleAddReturnItemOrder}
+                onUpdateReturnOrder={handleUpdateReturnItemOrder}
+                onDeleteReturnOrder={handleDeleteReturnItemOrder}
+                onCheckReturnOrder={handleCheckReturnItemOrder}
+                onApproveReturnOrder={handleApproveReturnItemOrder}
+                onRejectReturnOrder={handleRejectReturnItemOrder}
+                activePurchaseTab="return-item-order"
+                onSwitchPurchaseTab={tab => setActiveTab(tab)}
+              />
+            )}
+
+            {isTabPermitted && (activeTab === 'payment-purchase' || activeTab === 'paymentPurchase') && (
+              <PaymentPurchaseView
+                paymentPurchases={appState.paymentPurchases || DEFAULT_PAYMENT_PURCHASES}
+                purchaseInvoices={appState.purchaseInvoices || []}
+                cashBankAccounts={appState.cashBankAccounts || []}
+                suppliers={appState.suppliers || []}
+                currentUser={currentUser}
+                companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
+                onAddPaymentPurchase={handleAddPaymentPurchase}
+                onUpdatePaymentPurchase={handleUpdatePaymentPurchase}
+                onDeletePaymentPurchase={handleDeletePaymentPurchase}
+                onCheckPaymentPurchase={handleCheckPaymentPurchase}
+                onApprovePaymentPurchase={handleApprovePaymentPurchase}
+                activePurchaseTab="payment-purchase"
                 onSwitchPurchaseTab={tab => setActiveTab(tab)}
               />
             )}

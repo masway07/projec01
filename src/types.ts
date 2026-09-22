@@ -213,6 +213,15 @@ export interface FixedAssetMonthlyDepreciation {
   Dec: number;
 }
 
+export type FixedAssetCategory =
+  | 'land'
+  | 'building'
+  | 'vehicle'
+  | 'electronic'
+  | 'software'
+  | 'intangible_asset'
+  | 'right_of_use';
+
 export interface FixedAssetItem {
   id: string;
   kiNo: string; // KI NO
@@ -220,6 +229,7 @@ export interface FixedAssetItem {
   invoiceNo: string; // Invoice No
   description: string; // Asset description
   name?: string; // alias for description
+  assetCategory?: FixedAssetCategory | string; // Land, Building, Vehicle, Electronic, Software, Intangible Asset, Right of use
   qty: number; // Qty
   acquisitionDate: string; // Acquisition date (YYYY-MM-DD)
   deptCode: string; // Department
@@ -492,6 +502,154 @@ export interface PurchaseInvoice {
 }
 
 // ==========================================
+// Receive Item Order (Penerimaan Barang / Good Receipt / Surat Jalan Masuk)
+// ==========================================
+export type ReceiveItemOrderStatus = 'draft' | 'inspected' | 'received' | 'rejected' | 'partial';
+
+export interface ReceiveItemOrderLine {
+  id: string;
+  itemCode?: string;
+  itemName: string;
+  description?: string;
+  poQty: number; // Kuantitas di PO
+  receivedQty: number; // Kuantitas fisik yang diterima di gudang
+  acceptedQty: number; // Kuantitas yang lolos inspeksi QC / diterima baik
+  rejectedQty: number; // Kuantitas yang rusak / reject
+  uom: string;
+  location?: string; // Lokasi rak/bin gudang
+  condition?: 'good' | 'damaged' | 'defect' | 'incomplete';
+  notes?: string;
+}
+
+export interface ReceiveItemOrder {
+  id: string;
+  receiveNumber: string; // e.g. RCV/2026/03/001
+  date: string; // YYYY-MM-DD
+  poNumber: string; // Ref PO
+  poId?: string;
+  deliveryOrderNo: string; // Surat Jalan Supplier (DO)
+  deliveryOrderDate?: string;
+  supplierCode: string;
+  supplierName: string;
+  receivedBy: string; // Petugas gudang penerima
+  warehouseLocation?: string; // Gudang Bahan Baku / Sparepart / dll
+  driverName?: string;
+  vehiclePlateNumber?: string;
+  status: ReceiveItemOrderStatus;
+  qcStatus?: 'passed' | 'partial_pass' | 'failed' | 'pending';
+  qcInspector?: string;
+  items: ReceiveItemOrderLine[];
+  notes?: string;
+  checkedBy?: string;
+  checkedAt?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================
+// Return Item Order (Pengembalian Barang ke Supplier / Retur Pembelian)
+// ==========================================
+export type ReturnItemOrderStatus = 'draft' | 'pending_pickup' | 'sent_to_supplier' | 'completed' | 'cancelled';
+
+export interface ReturnItemOrderLine {
+  id: string;
+  itemCode?: string;
+  itemName: string;
+  description?: string;
+  qty: number; // Kuantitas yang dikembalikan
+  uom: string;
+  unitPrice: number; // Harga satuan sesuai PO
+  totalPrice: number; // qty * unitPrice
+  defectReason: string; // Kerusakan / Cacat / Salah Spek / Rusak saat Pengiriman
+  condition?: string;
+  notes?: string;
+}
+
+export interface ReturnItemOrder {
+  id: string;
+  returnNumber: string; // e.g. RTO/2026/03/001
+  date: string; // YYYY-MM-DD
+  poNumber: string; // Ref PO
+  receiveNumber?: string; // Ref Surat Jalan Penerimaan (Receive Item Order)
+  deliveryOrderNo?: string;
+  supplierCode: string;
+  supplierName: string;
+  supplierAddress?: string;
+  supplierContact?: string;
+  reason: string; // Alasan retur
+  returnType: 'replacement' | 'credit_note' | 'refund'; // Ganti Barang Baru / Potong Tagihan / Pengembalian Dana
+  status: ReturnItemOrderStatus;
+  currency: string;
+  items: ReturnItemOrderLine[];
+  totalReturnAmount: number;
+  shippingCarrier?: string; // Kurir / Armada Pengirim
+  trackingNumber?: string; // No Resi / Surat Jalan Pengembalian
+  notes?: string;
+  checkedBy?: string;
+  checkedAt?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================
+// Payment Purchase (Pembayaran Hutang Supplier / Faktur Pembelian)
+// ==========================================
+export type PaymentPurchaseStatus = 'draft' | 'processed' | 'reconciled' | 'cancelled';
+
+export interface PaymentPurchaseInvoiceRef {
+  id: string;
+  invoiceId?: string;
+  invoiceNo: string;
+  poNumber?: string;
+  invoiceDate?: string;
+  invoiceDueDate?: string;
+  invoiceTotal: number;
+  previouslyPaid: number;
+  paymentAmount: number; // Jumlah yang dibayar pada transaksi ini
+  remainingBalance: number;
+  notes?: string;
+}
+
+export interface PaymentPurchase {
+  id: string;
+  paymentNumber: string; // e.g. PAY/2026/03/001
+  paymentDate: string; // YYYY-MM-DD
+  supplierCode: string;
+  supplierName: string;
+  bankAccountId: string; // Rekening Kas/Bank yang digunakan
+  bankAccountName: string;
+  paymentMethod: 'Transfer' | 'Cash' | 'Giro' | 'Cheque' | 'Other';
+  refNo?: string; // No Referensi / No Transaksi Bank / No Cek
+  currency: string; // USD, IDR, etc.
+  exchangeRate: number; // Kurs terhadap IDR
+  invoices: PaymentPurchaseInvoiceRef[];
+  totalPaidAmount: number; // Total dalam mata uang transaksi
+  totalPaidAmountIDR: number; // Total dalam IDR
+  status: PaymentPurchaseStatus;
+  beneficiaryAccount?: string; // Rekening tujuan supplier
+  beneficiaryBank?: string;
+  beneficiaryName?: string;
+  notes?: string;
+  processedBy?: string;
+  checkedBy?: string;
+  checkedAt?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================
 // Master Data Types
 // ==========================================
 
@@ -668,11 +826,25 @@ export type AppPermission =
   | 'purchaseOrder'
   | 'purchaseInvoice'
   | 'purchase-invoice'
+  | 'receiveItemOrder'
+  | 'receive-item-order'
+  | 'returnItemOrder'
+  | 'return-item-order'
+  | 'paymentPurchase'
+  | 'payment-purchase'
   | 'sales'
   | 'salesPlan'
   | 'salesDelivery'
   | 'salesInvoice'
   | 'fixedAsset'
+  | 'fa-all'
+  | 'fa-land'
+  | 'fa-building'
+  | 'fa-vehicle'
+  | 'fa-electronic'
+  | 'fa-software'
+  | 'fa-intangible'
+  | 'fa-right-of-use'
   | 'inventory'
   | 'realisasi'
   | 'dept'
@@ -720,11 +892,21 @@ export type AuditModule =
   | 'Purchase Request'
   | 'Purchase Order'
   | 'Purchase Invoice'
+  | 'Receive Item Order'
+  | 'Return Item Order'
+  | 'Payment Purchase'
   | 'Sales'
   | 'Sales Plan'
   | 'Sales Delivery'
   | 'Sales Invoice'
   | 'Fixed Asset'
+  | 'Fixed Asset (Land)'
+  | 'Fixed Asset (Building)'
+  | 'Fixed Asset (Vehicle)'
+  | 'Fixed Asset (Electronic)'
+  | 'Fixed Asset (Software)'
+  | 'Fixed Asset (Intangible Asset)'
+  | 'Fixed Asset (Right of Use)'
   | 'Inventory'
   | 'Inventory (Raw Material)'
   | 'Inventory (Mold & Spare Part)'
@@ -782,6 +964,9 @@ export interface AppState {
   purchaseRequests?: PurchaseRequest[];
   purchaseOrders?: PurchaseOrder[];
   purchaseInvoices?: PurchaseInvoice[];
+  receiveItemOrders?: ReceiveItemOrder[];
+  returnItemOrders?: ReturnItemOrder[];
+  paymentPurchases?: PaymentPurchase[];
   suppliers?: Supplier[];
   customers?: Customer[];
   itemStocks?: ItemStock[];

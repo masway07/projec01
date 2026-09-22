@@ -62,13 +62,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen = false,
   onCloseMobile
 }) => {
-  const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({
-    budget: true,
-    cashBank: true,
-    purchase: true,
-    inventory: true,
-    sales: true
-  });
+  // Collapse all submenus by default so the sidebar is compact and not stretched long downwards
+  const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({});
 
   const toggleSubMenu = (menuId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -110,7 +105,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           subItems: [
             { id: 'purchase-request', label: 'Purchase Request', category: 'purchase_request' },
             { id: 'purchase-order', label: 'Purchase Order', category: 'purchase_order' },
+            { id: 'receive-item-order', label: 'Receive item order', category: 'receive_item_order' },
             { id: 'purchase-invoice', label: 'Purchase Invoice', category: 'purchase_invoice' },
+            { id: 'return-item-order', label: 'Return Item Order', category: 'return_item_order' },
+            { id: 'payment-purchase', label: 'Payment Purchase', category: 'payment_purchase' },
           ]
         },
         {
@@ -123,7 +121,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
             { id: 'sales-invoice', label: 'Sales Invoice', category: 'sales_invoice' },
           ]
         },
-        { id: 'fixedAsset', label: 'Fixed Asset', icon: Box },
+        {
+          id: 'fixedAsset',
+          label: 'Fixed Asset',
+          icon: Box,
+          subItems: [
+            { id: 'fixedAsset', label: 'Semua Asset', category: 'all' },
+            { id: 'fixed-asset-land', label: 'Land', category: 'land' },
+            { id: 'fixed-asset-building', label: 'Building', category: 'building' },
+            { id: 'fixed-asset-vehicle', label: 'Vehicle', category: 'vehicle' },
+            { id: 'fixed-asset-electronic', label: 'Electronic', category: 'electronic' },
+            { id: 'fixed-asset-software', label: 'Software', category: 'software' },
+            { id: 'fixed-asset-intangible', label: 'Intangible Asset', category: 'intangible_asset' },
+            { id: 'fixed-asset-right-of-use', label: 'Right of use', category: 'right_of_use' },
+          ]
+        },
         {
           id: 'inventory',
           label: 'Inventory',
@@ -300,7 +312,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     (item.id === 'purchase' && (
                       ((activeTab === 'purchase' || activeTab === 'purchase-request' || activeTab === 'purchaseRequest') && s.id === 'purchase-request') ||
                       ((activeTab === 'purchase-order' || activeTab === 'purchaseOrder') && s.id === 'purchase-order') ||
-                      ((activeTab === 'purchase-invoice' || activeTab === 'purchaseInvoice') && s.id === 'purchase-invoice')
+                      ((activeTab === 'receive-item-order' || activeTab === 'receiveItemOrder') && s.id === 'receive-item-order') ||
+                      ((activeTab === 'purchase-invoice' || activeTab === 'purchaseInvoice') && s.id === 'purchase-invoice') ||
+                      ((activeTab === 'return-item-order' || activeTab === 'returnItemOrder') && s.id === 'return-item-order') ||
+                      ((activeTab === 'payment-purchase' || activeTab === 'paymentPurchase') && s.id === 'payment-purchase')
+                    )) ||
+                    (item.id === 'fixedAsset' && (
+                      activeTab === 'fixedAsset' ||
+                      activeTab.startsWith('fixed-asset') ||
+                      s.id === activeTab
                     )) ||
                     (activeTab === 'inventory' && s.id === 'inventory-raw-material') ||
                     ((activeTab === 'sales' || activeTab === 'salesPlan') && s.id === 'sales-plan') ||
@@ -361,7 +381,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   (activeTab === 'realisasi' && sub.id === 'realisasi')
                                 )) ||
                                 (activeTab === 'inventory' && sub.id === 'inventory-raw-material') ||
-                                ((activeTab === 'purchaseInvoice' || activeTab === 'purchase-invoice') && sub.id === 'purchase-invoice') ||
+                                (item.id === 'purchase' && (
+                                  ((activeTab === 'purchase' || activeTab === 'purchaseRequest' || activeTab === 'purchase-request') && sub.id === 'purchase-request') ||
+                                  ((activeTab === 'purchaseOrder' || activeTab === 'purchase-order') && sub.id === 'purchase-order') ||
+                                  ((activeTab === 'receiveItemOrder' || activeTab === 'receive-item-order') && sub.id === 'receive-item-order') ||
+                                  ((activeTab === 'purchaseInvoice' || activeTab === 'purchase-invoice') && sub.id === 'purchase-invoice') ||
+                                  ((activeTab === 'returnItemOrder' || activeTab === 'return-item-order') && sub.id === 'return-item-order') ||
+                                  ((activeTab === 'paymentPurchase' || activeTab === 'payment-purchase') && sub.id === 'payment-purchase')
+                                )) ||
+                                (item.id === 'fixedAsset' && (
+                                  activeTab === sub.id ||
+                                  (activeTab === 'fixedAsset' && sub.id === 'fixedAsset')
+                                )) ||
                                 ((activeTab === 'sales' || activeTab === 'salesPlan') && sub.id === 'sales-plan') ||
                                 (activeTab === 'salesDelivery' && sub.id === 'sales-delivery') ||
                                 (activeTab === 'salesInvoice' && sub.id === 'sales-invoice') ||

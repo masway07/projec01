@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { COA, Department, ExchangeRates, FixedAssetItem, FixedAssetMonthlyDepreciation } from '../types';
+import { COA, Department, ExchangeRates, FixedAssetCategory, FixedAssetItem, FixedAssetMonthlyDepreciation } from '../types';
 import { X, Save, AlertCircle, Box, Layers, RefreshCw, Link as LinkIcon, BookOpen, Clock } from 'lucide-react';
 
 interface FixedAssetModalProps {
@@ -40,6 +40,7 @@ export const FixedAssetModal: React.FC<FixedAssetModalProps> = ({
   const [kiNo, setKiNo] = useState<string>('');
   const [invoiceNo, setInvoiceNo] = useState<string>('');
   const [description, setDescription] = useState<string>('');
+  const [assetCategory, setAssetCategory] = useState<string>('electronic');
   const [qty, setQty] = useState<number>(1);
   const [acquisitionDate, setAcquisitionDate] = useState<string>(`${defaultYear}-01-01`);
   const [deptCode, setDeptCode] = useState<string>(defaultDept);
@@ -113,6 +114,7 @@ export const FixedAssetModal: React.FC<FixedAssetModalProps> = ({
       setKiNo(editItem.kiNo || editItem.code || '');
       setInvoiceNo(editItem.invoiceNo || '');
       setDescription(editItem.description || editItem.name || '');
+      setAssetCategory(editItem.assetCategory || 'electronic');
       setQty(editItem.qty || 1);
       setAcquisitionDate(editItem.acquisitionDate || `${defaultYear}-01-01`);
       setDeptCode(editItem.deptCode || defaultDept);
@@ -148,6 +150,7 @@ export const FixedAssetModal: React.FC<FixedAssetModalProps> = ({
       setKiNo(randomCode);
       setInvoiceNo(`INV-${defaultYear}-${Math.floor(100 + Math.random() * 900)}`);
       setDescription('');
+      setAssetCategory('electronic');
       setQty(1);
       setAcquisitionDate(`${defaultYear}-01-01`);
       setDeptCode(defaultDept);
@@ -348,6 +351,7 @@ export const FixedAssetModal: React.FC<FixedAssetModalProps> = ({
       invoiceNo: invoiceNo.trim(),
       description: description.trim(),
       name: description.trim(),
+      assetCategory: assetCategory as FixedAssetCategory,
       qty: Number(qty) || 1,
       acquisitionDate,
       deptCode,
@@ -445,7 +449,7 @@ export const FixedAssetModal: React.FC<FixedAssetModalProps> = ({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Description */}
-              <div className="sm:col-span-3">
+              <div className="sm:col-span-2">
                 <label className="block font-semibold text-slate-700 mb-1">
                   Description / Nama Asset <span className="text-rose-500">*</span>
                 </label>
@@ -457,6 +461,26 @@ export const FixedAssetModal: React.FC<FixedAssetModalProps> = ({
                   placeholder="Contoh: CNC Milling Machine Hartford Type A, Forklift Toyota 3T, Building Extension"
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
+              </div>
+
+              {/* Kategori Fixed Asset */}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Submenu / Kategori Asset <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={assetCategory}
+                  onChange={e => setAssetCategory(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-indigo-300 rounded-xl font-semibold text-indigo-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer"
+                >
+                  <option value="land">Land (Tanah)</option>
+                  <option value="building">Building (Gedung & Bangunan)</option>
+                  <option value="vehicle">Vehicle (Kendaraan Operasional)</option>
+                  <option value="electronic">Electronic (Elektronik & Mesin IT)</option>
+                  <option value="software">Software (Perangkat Lunak)</option>
+                  <option value="intangible_asset">Intangible Asset (Takberwujud)</option>
+                  <option value="right_of_use">Right of use (Hak Guna)</option>
+                </select>
               </div>
 
               {/* Invoice No */}
