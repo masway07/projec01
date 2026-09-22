@@ -41,6 +41,25 @@ import { LotNumberView } from './components/production/LotNumberView';
 import { ProductionScheduleView } from './components/production/ProductionScheduleView';
 import { NGReportView } from './components/production/NGReportView';
 import { DeveloperConsole } from './components/developer/DeveloperConsole';
+import { AdminDashboardControlBar } from './components/admin/AdminDashboardControlBar';
+import { DynamicAdminCustomView } from './components/admin/DynamicAdminCustomView';
+
+const BUILTIN_TABS = [
+  'dashboard', 'budget', 'planner', 'deptPlanning', 'realisasi',
+  'buku-bank', 'penerimaan', 'pembayaran', 'cashBank',
+  'purchase-request', 'purchaseRequest', 'purchase-order', 'purchaseOrder',
+  'receive-item-order', 'receiveItemOrder', 'purchase-invoice', 'purchaseInvoice',
+  'return-item-order', 'returnItemOrder', 'payment-purchase', 'paymentPurchase',
+  'sales-plan', 'salesPlan', 'sales-delivery', 'salesDelivery', 'sales-invoice', 'salesInvoice',
+  'fixedAsset', 'fixed-asset-land', 'fixed-asset-building', 'fixed-asset-vehicle',
+  'fixed-asset-electronic', 'fixed-asset-software', 'fixed-asset-intangible', 'fixed-asset-right-of-use',
+  'inventory', 'inventory-raw-material', 'inventory-mold-sparepart', 'inventory-wip',
+  'inventory-finish-good', 'inventory-return-from-prod',
+  'production-lot-number', 'production-schedule', 'production-ng-report',
+  'report-ledger', 'report-balance-sheet', 'report-trial-balance', 'report-profit-loss',
+  'dept', 'supplier', 'customer', 'itemStock', 'masterProcess', 'dailyRates', 'coa', 'rate',
+  'users', 'auditLog', 'backup', 'settings', 'developer'
+];
 import {
   AppState,
   AppUser,
@@ -3492,6 +3511,41 @@ export default function App() {
 
           {/* Tab Views */}
           <main className="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto">
+            {isTabPermitted && (currentUser?.role === 'admin' || currentUser?.deptCode === 'ADMIN' || true) && (
+              <AdminDashboardControlBar
+                currentUser={currentUser}
+                activeTab={activeTab}
+                customMenus={appState.customMenus || []}
+                onSaveCustomMenus={handleSaveCustomMenus}
+                customViews={appState.customViews || {}}
+                onSaveCustomViews={handleSaveCustomViews}
+                allDataSources={{
+                  itemStocks: appState.itemStocks || [],
+                  purchaseOrders: appState.purchaseOrders || [],
+                  purchaseRequests: appState.purchaseRequests || [],
+                  salesInvoiceItems: appState.salesInvoiceItems || [],
+                  salesDeliveryItems: appState.salesDeliveryItems || [],
+                  deptPlanningItems: appState.deptPlanningItems || [],
+                  realizations: appState.realizations || [],
+                  inventoryItems: appState.inventoryItems || [],
+                  fixedAssetItems: appState.fixedAssetItems || [],
+                  lotNumbers: appState.lotNumbers || [],
+                  ngReports: appState.ngReports || [],
+                  coa: appState.coa || [],
+                  suppliers: appState.suppliers || [],
+                  customers: appState.customers || [],
+                  departments: appState.departments || []
+                }}
+                onUpdateDataSource={(key, data) => {
+                  updateAndSyncState(prev => ({ ...prev, [key]: data }), {
+                    action: 'UPDATE',
+                    module: 'Developer Studio',
+                    details: `Update data source ${key}`
+                  });
+                }}
+                onSelectTab={tabId => setActiveTab(tabId)}
+              />
+            )}
             {!isTabPermitted && (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center text-amber-900 my-6">
                 <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-2" />
@@ -4026,6 +4080,37 @@ export default function App() {
                 onAddDailyRate={handleAddDailyRate}
                 onUpdateDailyRate={handleUpdateDailyRate}
                 onDeleteDailyRate={handleDeleteDailyRate}
+              />
+            )}
+
+            {isTabPermitted && (!BUILTIN_TABS.includes(activeTab) || (appState.customViews && appState.customViews[activeTab])) && (
+              <DynamicAdminCustomView
+                activeTab={activeTab}
+                customViews={appState.customViews || {}}
+                allDataSources={{
+                  itemStocks: appState.itemStocks || [],
+                  purchaseOrders: appState.purchaseOrders || [],
+                  purchaseRequests: appState.purchaseRequests || [],
+                  salesInvoiceItems: appState.salesInvoiceItems || [],
+                  salesDeliveryItems: appState.salesDeliveryItems || [],
+                  deptPlanningItems: appState.deptPlanningItems || [],
+                  realizations: appState.realizations || [],
+                  inventoryItems: appState.inventoryItems || [],
+                  fixedAssetItems: appState.fixedAssetItems || [],
+                  lotNumbers: appState.lotNumbers || [],
+                  ngReports: appState.ngReports || [],
+                  coa: appState.coa || [],
+                  suppliers: appState.suppliers || [],
+                  customers: appState.customers || [],
+                  departments: appState.departments || []
+                }}
+                onUpdateDataSource={(key, data) => {
+                  updateAndSyncState(prev => ({ ...prev, [key]: data }), {
+                    action: 'UPDATE',
+                    module: 'Developer Studio',
+                    details: `Update record in ${key}`
+                  });
+                }}
               />
             )}
           </main>
