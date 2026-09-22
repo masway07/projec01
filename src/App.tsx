@@ -315,7 +315,9 @@ export default function App() {
             : DEFAULT_PRODUCTION_SCHEDULES,
           ngReports: Array.isArray(parsed.ngReports)
             ? parsed.ngReports
-            : DEFAULT_NG_REPORTS
+            : DEFAULT_NG_REPORTS,
+          customMenus: Array.isArray(parsed.customMenus) && parsed.customMenus.length > 0 ? parsed.customMenus : [],
+          customViews: parsed.customViews && typeof parsed.customViews === 'object' ? parsed.customViews : {}
         };
       }
     } catch (e) {
@@ -353,7 +355,9 @@ export default function App() {
       returnFromProdItems: DEFAULT_RETURN_FROM_PROD_ITEMS,
       lotNumbers: DEFAULT_LOT_NUMBERS,
       productionSchedules: DEFAULT_PRODUCTION_SCHEDULES,
-      ngReports: DEFAULT_NG_REPORTS
+      ngReports: DEFAULT_NG_REPORTS,
+      customMenus: [],
+      customViews: {}
     };
   });
 
@@ -476,7 +480,9 @@ export default function App() {
           coa: Array.isArray(sData.coa) && sData.coa.length > 0 ? sData.coa : prev.coa,
           ratesByYear: sData.ratesByYear || prev.ratesByYear,
           companySettings: sData.companySettings || prev.companySettings,
-          returnFromProdItems: Array.isArray(sData.returnFromProdItems) ? sData.returnFromProdItems : (prev.returnFromProdItems || DEFAULT_RETURN_FROM_PROD_ITEMS)
+          returnFromProdItems: Array.isArray(sData.returnFromProdItems) ? sData.returnFromProdItems : (prev.returnFromProdItems || DEFAULT_RETURN_FROM_PROD_ITEMS),
+          customMenus: Array.isArray(sData.customMenus) && sData.customMenus.length > 0 ? sData.customMenus : (prev.customMenus || []),
+          customViews: sData.customViews && typeof sData.customViews === 'object' && Object.keys(sData.customViews).length > 0 ? sData.customViews : (prev.customViews || {})
         }));
 
         if (Array.isArray(resp.auditLogs) && resp.auditLogs.length > 0) {
