@@ -57,10 +57,9 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
   onUpdateDataSource,
   onSelectTab
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'menus' | 'layouts' | 'forms' | 'datasource' | 'workflow' | 'preview'>('menus');
+  const [activeSubTab, setActiveSubTab] = useState<'menus' | 'layouts' | 'forms' | 'datasource' | 'workflow' | 'preview'>('layouts');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Complete system default menus if customMenus is empty
   const defaultSystemMenus = [
     {
       id: 'workspace',
@@ -162,9 +161,9 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
         layoutType: 'table',
         dataSourceKey: 'deptPlanningItems',
         columns: [
-          { key: 'code', label: 'Kode', type: 'text' },
-          { key: 'name', label: 'Nama Item', type: 'text' },
-          { key: 'amount', label: 'Jumlah / Nilai', type: 'number' }
+          { key: 'code', label: 'Kode', type: 'text', linkedModule: 'itemStocks' },
+          { key: 'name', label: 'Nama Item', type: 'text', linkedModule: 'itemStocks' },
+          { key: 'amount', label: 'Jumlah / Nilai', type: 'number', linkedModule: 'deptPlanningItems' }
         ]
       },
       'itemStock': {
@@ -173,9 +172,9 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
         layoutType: 'table',
         dataSourceKey: 'itemStocks',
         columns: [
-          { key: 'code', label: 'Kode SKU', type: 'text' },
-          { key: 'name', label: 'Nama Barang', type: 'text' },
-          { key: 'stock', label: 'Stok', type: 'number' }
+          { key: 'code', label: 'Kode SKU', type: 'text', linkedModule: 'itemStocks' },
+          { key: 'name', label: 'Nama Barang', type: 'text', linkedModule: 'itemStocks' },
+          { key: 'stock', label: 'Stok', type: 'number', linkedModule: 'itemStocks' }
         ]
       }
     }
@@ -198,8 +197,8 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
     layoutType: 'table',
     dataSourceKey: 'itemStocks',
     columns: [
-      { key: 'code', label: 'Kode / ID', type: 'text' },
-      { key: 'name', label: 'Nama / Keterangan', type: 'text' }
+      { key: 'code', label: 'Kode / ID', type: 'text', linkedModule: 'itemStocks' },
+      { key: 'name', label: 'Nama / Keterangan', type: 'text', linkedModule: 'itemStocks' }
     ]
   };
 
@@ -207,12 +206,20 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
   const [layoutDesc, setLayoutDesc] = useState<string>(currentViewConfig.description);
   const [layoutType, setLayoutType] = useState<string>(currentViewConfig.layoutType);
   const [layoutDataSource, setLayoutDataSource] = useState<string>(currentViewConfig.dataSourceKey);
-  const [layoutColumns, setLayoutColumns] = useState<Array<{ key: string; label: string; type: string }>>(currentViewConfig.columns || []);
+  const [layoutColumns, setLayoutColumns] = useState<Array<{ key: string; label: string; type: string; linkedModule?: string }>>(currentViewConfig.columns || []);
 
   // New Column inputs
   const [newColKey, setNewColKey] = useState<string>('');
   const [newColLabel, setNewColLabel] = useState<string>('');
   const [newColType, setNewColType] = useState<string>('text');
+  const [newColLinkedModule, setNewColLinkedModule] = useState<string>('itemStocks');
+
+  // Editing Column index state
+  const [editingColIdx, setEditingColIdx] = useState<number | null>(null);
+  const [editColLabelVal, setEditColLabelVal] = useState<string>('');
+  const [editColKeyVal, setEditColKeyVal] = useState<string>('');
+  const [editColTypeVal, setEditColTypeVal] = useState<string>('text');
+  const [editColModuleVal, setEditColModuleVal] = useState<string>('itemStocks');
 
   // Modal / Add Menu State
   const [showAddMenuModal, setShowAddMenuModal] = useState<boolean>(false);
@@ -235,7 +242,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
   const handleSaveAll = () => {
     onSaveCustomMenus(menus);
     onSaveCustomViews(views);
-    showNotification('Seluruh struktur menu, konfigurasi kolom, data source, dan layout berhasil disimpan permanen selamanya!');
+    showNotification('Seluruh struktur menu, pengaturan kolom, modul relasi, dan layout berhasil disimpan permanen selamanya!');
   };
 
   const handleSelectMenuForLayout = (id: string, label: string) => {
@@ -246,8 +253,8 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
       layoutType: 'table',
       dataSourceKey: 'itemStocks',
       columns: [
-        { key: 'code', label: 'Kode / ID', type: 'text' },
-        { key: 'name', label: 'Nama / Keterangan', type: 'text' }
+        { key: 'code', label: 'Kode / ID', type: 'text', linkedModule: 'itemStocks' },
+        { key: 'name', label: 'Nama / Keterangan', type: 'text', linkedModule: 'itemStocks' }
       ]
     };
     setLayoutTitle(existing.title || label);
@@ -255,9 +262,10 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
     setLayoutType(existing.layoutType || 'table');
     setLayoutDataSource(existing.dataSourceKey || 'itemStocks');
     setLayoutColumns(existing.columns || [
-      { key: 'code', label: 'Kode / ID', type: 'text' },
-      { key: 'name', label: 'Nama / Keterangan', type: 'text' }
+      { key: 'code', label: 'Kode / ID', type: 'text', linkedModule: 'itemStocks' },
+      { key: 'name', label: 'Nama / Keterangan', type: 'text', linkedModule: 'itemStocks' }
     ]);
+    setEditingColIdx(null);
   };
 
   const handleSaveCurrentLayout = () => {
@@ -273,22 +281,43 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
     };
     setViews(updatedViews);
     onSaveCustomViews(updatedViews);
-    showNotification(`Layout untuk "${layoutTitle}" berhasil disimpan dan langsung aktif di dashboard!`);
+    showNotification(`Layout dan konfigurasi kolom untuk "${layoutTitle}" berhasil disimpan permanen!`);
   };
 
   const handleAddColumn = () => {
     if (!newColLabel.trim()) return;
     const key = newColKey.trim() || newColLabel.toLowerCase().replace(/\s+/g, '_');
     if (layoutColumns.some(c => c.key === key)) return;
-    setLayoutColumns([...layoutColumns, { key, label: newColLabel, type: newColType }]);
+    setLayoutColumns([...layoutColumns, { key, label: newColLabel, type: newColType, linkedModule: newColLinkedModule }]);
     setNewColKey('');
     setNewColLabel('');
-    showNotification(`Kolom "${newColLabel}" berhasil ditambahkan ke layout.`);
+    showNotification(`Kolom "${newColLabel}" berhasil ditambahkan.`);
   };
 
   const handleDeleteColumn = (colKey: string) => {
     setLayoutColumns(layoutColumns.filter(c => c.key !== colKey));
-    showNotification('Kolom berhasil dihapus dari layout.');
+    showNotification('Kolom berhasil dihapus.');
+  };
+
+  const handleStartEditCol = (idx: number, col: any) => {
+    setEditingColIdx(idx);
+    setEditColLabelVal(col.label);
+    setEditColKeyVal(col.key);
+    setEditColTypeVal(col.type || 'text');
+    setEditColModuleVal(col.linkedModule || 'itemStocks');
+  };
+
+  const handleSaveEditCol = (idx: number) => {
+    const updated = [...layoutColumns];
+    updated[idx] = {
+      key: editColKeyVal.trim() || updated[idx].key,
+      label: editColLabelVal.trim() || updated[idx].label,
+      type: editColTypeVal,
+      linkedModule: editColModuleVal
+    };
+    setLayoutColumns(updated);
+    setEditingColIdx(null);
+    showNotification('Kolom berhasil diperbarui!');
   };
 
   const handleSaveItemLabel = (gIdx: number, iIdx: number) => {
@@ -500,10 +529,10 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 text-white">
-              Pusat Kontrol & Kustomisasi Hirarki Menu & Layout UI
+              Pusat Kontrol & Kustomisasi Kolom Tabel & Modul
             </h1>
             <p className="text-slate-300 text-sm mt-1 max-w-2xl">
-              Atur kolom, sumber data, dan tampilan seluruh menu dan submenu agar sinkron sempurna dengan dashboard.
+              Tambah, edit, dan hapus nama kolom, key data, serta modul sumber link untuk setiap menu dan submenu secara permanen.
             </p>
           </div>
         </div>
@@ -527,7 +556,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
       <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200">
         {[
           { id: 'menus', label: '1. Kelola Hirarki Menu & Submenu', icon: ListTree },
-          { id: 'layouts', label: '2. Tampilan & Layout UI (Kolom & Data)', icon: LayoutGrid },
+          { id: 'layouts', label: '2. Pengaturan Kolom & Layout UI', icon: LayoutGrid },
           { id: 'forms', label: '3. Form & Input Builder', icon: FileCode },
           { id: 'datasource', label: '4. Integrasi & CRUD Data Source', icon: Database },
           { id: 'workflow', label: '5. Visual Workflow (n8n Drag & Drop)', icon: Workflow },
@@ -723,19 +752,19 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
         </div>
       )}
 
-      {/* Tab 2: Tampilan & Layout UI (Kolom & Data Source untuk Menu & Submenu) */}
+      {/* Tab 2: Pengaturan Kolom & Layout UI */}
       {activeSubTab === 'layouts' && (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-900">Pengaturan Tampilan & Layout UI (Menu & Submenu)</h2>
-            <p className="text-sm text-slate-500 mt-0.5">Semua menu dan submenu sistem tersedia di sini. Anda dapat mengatur judul, tipe layout, sumber data, serta menambah/mengedit/menghapus kolom secara permanen.</p>
+            <h2 className="text-lg font-bold text-slate-900">Manajemen Kolom Tabel, Key Data, & Modul Sumber Link</h2>
+            <p className="text-sm text-slate-500 mt-0.5">Pilih menu atau submenu, lalu atur kolom tabel secara detail (Tambah, Edit Nama, Edit Key, Tipe Data, dan Modul Sumber Link) agar tersinkronisasi permanen di dashboard.</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left: Complete List of All Menus and Submenus */}
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
               <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Daftar Menu & Submenu Sistem</h3>
-              <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
+              <div className="space-y-3 max-h-[580px] overflow-y-auto pr-1">
                 {menus.map((groupObj, gIdx) => (
                   <div key={groupObj.id || gIdx} className="space-y-1.5">
                     <div className="text-[11px] font-bold text-indigo-600 uppercase px-2">{groupObj.group}</div>
@@ -788,7 +817,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
               </div>
             </div>
 
-            {/* Right: Layout Config & Column Manager for Selected Menu/Submenu */}
+            {/* Right: Layout Config & Advanced Column Manager */}
             <div className="lg:col-span-2 bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
               <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                 <div>
@@ -829,18 +858,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi Halaman</label>
-                <input
-                  type="text"
-                  value={layoutDesc}
-                  onChange={e => setLayoutDesc(e.target.value)}
-                  placeholder="Keterangan singkat halaman..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Hubungkan Sumber Data (Data Source Linking)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Hubungkan Sumber Data Utama (Data Source)</label>
                 <select
                   value={layoutDataSource}
                   onChange={e => setLayoutDataSource(e.target.value)}
@@ -855,83 +873,135 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                   <option value="coa">COA (Bagan Akun)</option>
                   <option value="departments">Departments (Master Departemen)</option>
                 </select>
-                <p className="text-[11px] text-slate-500 mt-1">Menu ini akan otomatis menampilkan dan mengelola data dari sumber yang dipilih.</p>
               </div>
 
-              {/* Columns Manager */}
-              <div className="space-y-3 pt-3 border-t border-slate-200">
+              {/* Advanced Columns Manager (Add / Edit Label & Key / Linked Module) */}
+              <div className="space-y-4 pt-3 border-t border-slate-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-bold text-slate-900 text-sm">Manajemen Kolom Tabel</h4>
-                    <p className="text-xs text-slate-500">Tambah, ubah, atau hapus kolom yang tampil pada tabel menu ini.</p>
+                    <h4 className="font-bold text-slate-900 text-sm">Manajemen Kolom Tabel (Nama, Key & Modul Link)</h4>
+                    <p className="text-xs text-slate-500">Tambah, ubah nama kolom, key data, atau pilih modul sumber relasi data per kolom.</p>
                   </div>
                   <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
                     {layoutColumns.length} Kolom Aktif
                   </span>
                 </div>
 
-                {/* Add column quick form */}
-                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Nama Kolom (Label, cth: Harga Satuan)"
-                    value={newColLabel}
-                    onChange={e => setNewColLabel(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium outline-none w-full"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Key Data (cth: unit_price)"
-                    value={newColKey}
-                    onChange={e => setNewColKey(e.target.value)}
-                    className="w-full sm:w-40 px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono outline-none"
-                  />
-                  <select
-                    value={newColType}
-                    onChange={e => setNewColType(e.target.value)}
-                    className="w-full sm:w-32 px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold outline-none cursor-pointer"
-                  >
-                    <option value="text">Teks</option>
-                    <option value="number">Angka / Nilai</option>
-                    <option value="date">Tanggal</option>
-                    <option value="badge">Badge Status</option>
-                  </select>
-                  <button
-                    onClick={handleAddColumn}
-                    className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold shadow cursor-pointer shrink-0 flex items-center justify-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Tambah Kolom
-                  </button>
+                {/* Add column form */}
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                  <div className="text-xs font-bold text-slate-700">Tambah Kolom Baru:</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Nama Kolom (Label)"
+                      value={newColLabel}
+                      onChange={e => setNewColLabel(e.target.value)}
+                      className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium outline-none"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Key Data (cth: unit_price)"
+                      value={newColKey}
+                      onChange={e => setNewColKey(e.target.value)}
+                      className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono outline-none"
+                    />
+                    <select
+                      value={newColLinkedModule}
+                      onChange={e => setNewColLinkedModule(e.target.value)}
+                      className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold outline-none cursor-pointer"
+                    >
+                      <option value="itemStocks">Modul: Item Stock</option>
+                      <option value="deptPlanningItems">Modul: Dept Planning</option>
+                      <option value="purchaseOrders">Modul: Purchase Orders</option>
+                      <option value="salesInvoiceItems">Modul: Sales Invoices</option>
+                      <option value="coa">Modul: COA</option>
+                      <option value="departments">Modul: Departments</option>
+                    </select>
+                    <button
+                      onClick={handleAddColumn}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold shadow cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Tambah Kolom
+                    </button>
+                  </div>
                 </div>
 
-                {/* Columns table list */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[240px] overflow-y-auto">
+                {/* Columns table list with Edit / Delete */}
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 sticky top-0">
-                        <th className="p-2.5">Label Kolom</th>
-                        <th className="p-2.5">Key Data</th>
-                        <th className="p-2.5">Tipe Data</th>
-                        <th className="p-2.5 text-right">Aksi</th>
+                      <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                        <th className="p-3">Nama Kolom (Label)</th>
+                        <th className="p-3">Key Data</th>
+                        <th className="p-3">Modul Sumber Link</th>
+                        <th className="p-3 text-right">Aksi</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {layoutColumns.map((col: any) => (
-                        <tr key={col.key} className="border-b border-slate-100 hover:bg-slate-50">
-                          <td className="p-2.5 font-bold text-slate-800">{col.label}</td>
-                          <td className="p-2.5 font-mono text-indigo-600">{col.key}</td>
-                          <td className="p-2.5 uppercase text-[10px] font-bold text-slate-500">{col.type}</td>
-                          <td className="p-2.5 text-right">
-                            <button
-                              onClick={() => handleDeleteColumn(col.key)}
-                              className="p-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 cursor-pointer"
-                              title="Hapus Kolom"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {layoutColumns.map((col: any, idx: number) => {
+                        const isEditingThis = editingColIdx === idx;
+                        return (
+                          <tr key={col.key || idx} className="border-b border-slate-100 hover:bg-slate-50">
+                            {isEditingThis ? (
+                              <>
+                                <td className="p-2.5">
+                                  <input
+                                    type="text"
+                                    value={editColLabelVal}
+                                    onChange={e => setEditColLabelVal(e.target.value)}
+                                    className="px-2 py-1 bg-white border border-indigo-500 rounded text-xs font-bold w-full outline-none"
+                                    autoFocus
+                                  />
+                                </td>
+                                <td className="p-2.5">
+                                  <input
+                                    type="text"
+                                    value={editColKeyVal}
+                                    onChange={e => setEditColKeyVal(e.target.value)}
+                                    className="px-2 py-1 bg-white border border-indigo-500 rounded text-xs font-mono w-full outline-none"
+                                  />
+                                </td>
+                                <td className="p-2.5">
+                                  <select
+                                    value={editColModuleVal}
+                                    onChange={e => setEditColModuleVal(e.target.value)}
+                                    className="px-2 py-1 bg-white border border-indigo-500 rounded text-xs w-full outline-none cursor-pointer"
+                                  >
+                                    <option value="itemStocks">Item Stock</option>
+                                    <option value="deptPlanningItems">Dept Planning</option>
+                                    <option value="purchaseOrders">Purchase Orders</option>
+                                    <option value="salesInvoiceItems">Sales Invoices</option>
+                                    <option value="coa">COA</option>
+                                    <option value="departments">Departments</option>
+                                  </select>
+                                </td>
+                                <td className="p-2.5 text-right space-x-1">
+                                  <button onClick={() => handleSaveEditCol(idx)} className="px-2 py-1 bg-indigo-600 text-white rounded text-[11px] font-bold cursor-pointer">Simpan</button>
+                                  <button onClick={() => setEditingColIdx(null)} className="px-2 py-1 bg-slate-200 text-slate-700 rounded text-[11px] cursor-pointer">Batal</button>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="p-3 font-bold text-slate-800">{col.label}</td>
+                                <td className="p-3 font-mono text-indigo-600">{col.key}</td>
+                                <td className="p-3">
+                                  <span className="px-2 py-0.5 rounded bg-violet-50 text-violet-700 font-semibold text-[10px] border border-violet-200">
+                                    {col.linkedModule || 'itemStocks'}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-right space-x-1">
+                                  <button onClick={() => handleStartEditCol(idx, col)} className="p-1.5 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-600 cursor-pointer" title="Edit Kolom">
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={() => handleDeleteColumn(col.key)} className="p-1.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 cursor-pointer" title="Hapus Kolom">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1067,7 +1137,6 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                     <option key={parentIt.id} value={parentIt.id}>Submenu di bawah: {parentIt.label}</option>
                   ))}
                 </select>
-                <p className="text-[11px] text-slate-500 mt-1">Jika dipilih, menu baru ini akan otomatis menjadi submenu di bawah menu utama tersebut.</p>
               </div>
 
               <div>
@@ -1097,7 +1166,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                 <input type="text" placeholder="Contoh: CODE-001" value={newDataCode} onChange={e => setNewDataCode(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 navigasi mb-1">Nama / Keterangan</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Nama / Keterangan</label>
                 <input type="text" placeholder="Contoh: Material Utama" value={newDataName} onChange={e => setNewDataName(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none" />
               </div>
             </div>
