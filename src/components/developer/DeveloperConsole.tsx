@@ -25,7 +25,11 @@ import {
   FolderTree,
   Sliders,
   CheckSquare,
-  Workflow
+  Workflow,
+  ArrowRightLeft,
+  CornerDownRight,
+  ArrowUpFromLine,
+  GitCommit
 } from 'lucide-react';
 import { AppUser, CompanySettings } from '../../types';
 import { WorkflowBuilder } from './WorkflowBuilder';
@@ -174,6 +178,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
   const [newMenuLabel, setNewMenuLabel] = useState<string>('');
   const [newMenuId, setNewMenuId] = useState<string>('');
   const [newMenuIcon, setNewMenuIcon] = useState<string>('Layers');
+  const [newMenuParentId, setNewMenuParentId] = useState<string>(''); // If set, created directly as subitem of this parent menu
 
   // Data Source CRUD state
   const [showAddDataModal, setShowAddDataModal] = useState<boolean>(false);
@@ -188,7 +193,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
   const handleSaveAll = () => {
     onSaveCustomMenus(menus);
     onSaveCustomViews(views);
-    showNotification('Semua konfigurasi Developer, Nama Menu, Layout, dan Data Source berhasil disimpan dan diterapkan!');
+    showNotification('Seluruh struktur menu, induk submenu, dan perubahan berhasil disimpan permanen selamanya!');
   };
 
   const handleSaveItemLabel = (gIdx: number, iIdx: number) => {
@@ -209,27 +214,144 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
     showNotification(`Nama submenu berhasil diubah menjadi "${editSubLabelVal}"!`);
   };
 
+  // Convert Menu to Submenu of another item
+  const handleConvertToSubmenu = (sourceGIdx: number, sourceIIdx: number, targetParentMenuId: string) => {
+    const updated = [...menus];
+    const sourceItem = updated[sourceGIdx].items[sourceIIdx];
+
+    // Remove from main items
+    updated[sourceGIdx].items.splice(sourceIIdx, 1);
+
+    // Find target parent across all groups
+    let found = false;
+    for (const g of updated) {
+      for (const it of g.items) {
+        if (it.id === targetParentMenuId) {
+          if (!it.subItems) it.subItems = [];
+          it.subItems.push({ id: sourceItem.id, label: sourceItem.label, category: sourceItem.id });
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+
+    setMenus(updated);
+    onSaveCustomMenus(updated);
+    showNotification(`Menu "${sourceItem.label}" berhasil diubah menjadi Submenu dan disimpan permanen!`);
+  };
+
+  // Change Parent of an existing Submenu
+  const handleChangeSubmenuParent = (subId: string, newParentId: string) => {
+    if (!newParentId) return;
+    const updated = [...menus];
+    let extractedSub: any = null;
+
+    // 1. Remove from current parent
+    for (const g of updated) {
+      for (const it of g.items) {
+        if (it.subItems) {
+          const sIdx = it.subItems.findIndex((s: any) => s.id === subId);
+          if (sIdx !== -1) {
+            extractedSub = it.subItems.splice(sIdx, 1)[0];
+            break;
+          }
+        }
+      }
+      if (extractedSub) break;
+    }
+
+    if (!extractedSub) return;
+
+    // 2. Insert into new parent
+    let inserted = false;
+    for (const g of updated) {
+      for (const it of g.items) {
+        if (it.id === newParentId) {
+          if (!it.subItems) it.subItems = [];
+          it.subItems.push(extractedSub);
+          inserted = true;
+          break;
+        }
+      }
+      if (inserted) break;
+    }
+
+    if (inserted) {
+      setMenus(updated);
+      onSaveCustomMenus(updated);
+      showNotification(`Induk submenu berhasil dipindahkan dan disimpan permanen!`);
+    }
+  };
+
+  // Promote Submenu to Main Menu
+  const handlePromoteToMenu = (gIdx: number, iIdx: number, sIdx: number) => {
+    const updated = [...menus];
+    const subItem = updated[gIdx].items[iIdx].subItems[sIdx];
+
+    // Remove from subItems
+    updated[gIdx].items[iIdx].subItems.splice(sIdx, 1);
+
+    // Add to main items in the same group
+    updated[gIdx].items.push({
+      id: subItem.id,
+      label: subItem.label,
+      icon: 'Layers',
+      subItems: []
+    });
+
+    setMenus(updated);
+    onSaveCustomMenus(updated);
+    showNotification(`Submenu "${subItem.label}" berhasil dipromosikan menjadi Menu Utama!`);
+  };
+
   const handleAddMenu = () => {
     if (!newMenuLabel.trim()) return;
     const id = newMenuId.trim() || newMenuLabel.toLowerCase().replace(/\s+/g, '-');
     const updated = [...menus];
-    let groupObj = updated.find(g => g.group.toLowerCase() === newMenuGroup.toLowerCase());
-    if (!groupObj) {
-      groupObj = { id: newMenuGroup.toLowerCase(), group: newMenuGroup, items: [] };
-      updated.push(groupObj);
-    }
-    groupObj.items.push({
+    const newEntry = {
       id,
       label: newMenuLabel,
-      icon: newMenuIcon,
+      category: id,
       subItems: []
-    });
+    };
+
+    if (newMenuParentId) {
+      // Create directly as submenu of selected parent menu
+      let added = false;
+      for (const g of updated) {
+        for (const it of g.items) {
+          if (it.id === newMenuParentId) {
+            if (!it.subItems) it.subItems = [];
+            it.subItems.push(newEntry);
+            added = true;
+            break;
+          }
+        }
+        if (added) break;
+      }
+    } else {
+      // Create as top-level menu item
+      let groupObj = updated.find(g => g.group.toLowerCase() === newMenuGroup.toLowerCase());
+      if (!groupObj) {
+        groupObj = { id: newMenuGroup.toLowerCase(), group: newMenuGroup, items: [] };
+        updated.push(groupObj);
+      }
+      groupObj.items.push({
+        id,
+        label: newMenuLabel,
+        icon: newMenuIcon,
+        subItems: []
+      });
+    }
+
     setMenus(updated);
     onSaveCustomMenus(updated);
     setNewMenuLabel('');
     setNewMenuId('');
+    setNewMenuParentId('');
     setShowAddMenuModal(false);
-    showNotification(`Menu baru "${newMenuLabel}" berhasil ditambahkan ke grup ${newMenuGroup}!`);
+    showNotification(`Menu/Submenu baru "${newMenuLabel}" berhasil ditambahkan dan disimpan permanen!`);
   };
 
   const handleDeleteMenu = (groupIndex: number, itemIndex: number) => {
@@ -237,7 +359,15 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
     updated[groupIndex].items.splice(itemIndex, 1);
     setMenus(updated);
     onSaveCustomMenus(updated);
-    showNotification('Menu berhasil dihapus dari sistem.');
+    showNotification('Menu berhasil dihapus.');
+  };
+
+  const handleDeleteSubItem = (gIdx: number, iIdx: number, sIdx: number) => {
+    const updated = [...menus];
+    updated[gIdx].items[iIdx].subItems.splice(sIdx, 1);
+    setMenus(updated);
+    onSaveCustomMenus(updated);
+    showNotification('Submenu berhasil dihapus.');
   };
 
   const handleMoveMenu = (groupIndex: number, itemIndex: number, direction: 'up' | 'down') => {
@@ -268,7 +398,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
     setNewDataCode('');
     setNewDataName('');
     setShowAddDataModal(false);
-    showNotification(`Record baru berhasil ditambahkan ke sumber data ${selectedDataSourceKey}!`);
+    showNotification(`Record baru berhasil ditambahkan!`);
   };
 
   const handleDeleteDataSourceRecord = (index: number) => {
@@ -296,10 +426,10 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 text-white">
-              Pusat Kontrol & Kustomisasi Developer
+              Pusat Kontrol & Kustomisasi Hirarki Menu Fleksibel
             </h1>
             <p className="text-slate-300 text-sm mt-1 max-w-2xl">
-              Edit nama semua menu/submenu sistem, kelola tampilan layout, bangun form, integrasikan data source, dan rancang pipeline integrasi data visual (n8n Style).
+              Buat menu baru langsung sebagai submenu, ubah induk submenu, pindah antar menu, dan simpan perubahan secara permanen selamanya.
             </p>
           </div>
         </div>
@@ -308,7 +438,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
           onClick={handleSaveAll}
           className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer border border-indigo-400/30 shrink-0"
         >
-          <Save className="w-4 h-4" /> Simpan & Terapkan Semua
+          <Save className="w-4 h-4" /> Simpan & Terapkan Selamanya
         </button>
       </div>
 
@@ -322,7 +452,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
       {/* Sub Tabs Navigation */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200">
         {[
-          { id: 'menus', label: '1. Edit Nama Menu & Submenu', icon: ListTree },
+          { id: 'menus', label: '1. Kelola Hirarki Menu & Submenu', icon: ListTree },
           { id: 'layouts', label: '2. Tampilan & Layout UI', icon: LayoutGrid },
           { id: 'forms', label: '3. Form & Input Builder', icon: FileCode },
           { id: 'datasource', label: '4. Integrasi & CRUD Data Source', icon: Database },
@@ -348,21 +478,21 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
         })}
       </div>
 
-      {/* Tab 1: Edit Nama Menu & Submenu */}
+      {/* Tab 1: Kelola Menu & Submenu */}
       {activeSubTab === 'menus' && (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Daftar Lengkap Menu & Submenu (Editable Names)</h2>
+              <h2 className="text-lg font-bold text-slate-900">Manajemen Pembuatan Menu & Perubahan Induk Submenu</h2>
               <p className="text-sm text-slate-500 mt-0.5">
-                Klik ikon edit pada nama menu atau submenu untuk mengubah namanya secara langsung dan simpan.
+                Buat menu baru langsung sebagai submenu di menu tertentu, ubah induk submenu, atau pindahkan menu antar level secara permanen.
               </p>
             </div>
             <button
               onClick={() => setShowAddMenuModal(true)}
               className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition cursor-pointer shadow shrink-0"
             >
-              <Plus className="w-4 h-4" /> Tambah Menu Baru
+              <Plus className="w-4 h-4" /> Tambah Menu / Submenu Baru
             </button>
           </div>
 
@@ -375,7 +505,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                     <h3 className="font-bold text-slate-900 text-base tracking-wide uppercase">{groupObj.group}</h3>
                   </div>
                   <span className="text-xs px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
-                    {groupObj.items?.length || 0} Menu
+                    {groupObj.items?.length || 0} Menu Utama
                   </span>
                 </div>
 
@@ -384,7 +514,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                     const itemKey = `${gIdx}-${iIdx}`;
                     const isEditingThis = editingItemKey === itemKey;
                     return (
-                      <div key={item.id || iIdx} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition space-y-2">
+                      <div key={item.id || iIdx} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3 flex-1">
                             <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow shrink-0">
@@ -400,30 +530,13 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                                     className="px-3 py-1 bg-white border border-indigo-500 rounded-lg text-sm font-bold text-slate-900 outline-none w-full"
                                     autoFocus
                                   />
-                                  <button
-                                    onClick={() => handleSaveItemLabel(gIdx, iIdx)}
-                                    className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg shadow cursor-pointer shrink-0"
-                                  >
-                                    Simpan
-                                  </button>
-                                  <button
-                                    onClick={() => setEditingItemKey(null)}
-                                    className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs rounded-lg cursor-pointer shrink-0"
-                                  >
-                                    Batal
-                                  </button>
+                                  <button onClick={() => handleSaveItemLabel(gIdx, iIdx)} className="px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded-lg cursor-pointer">Simpan</button>
+                                  <button onClick={() => setEditingItemKey(null)} className="px-2 py-1 bg-slate-200 text-slate-700 text-xs rounded-lg cursor-pointer">Batal</button>
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2">
                                   <span className="font-bold text-slate-900 text-sm">{item.label}</span>
-                                  <button
-                                    onClick={() => {
-                                      setEditingItemKey(itemKey);
-                                      setEditItemLabelVal(item.label);
-                                    }}
-                                    className="text-indigo-600 hover:text-indigo-800 p-1 cursor-pointer"
-                                    title="Edit Nama Menu"
-                                  >
+                                  <button onClick={() => { setEditingItemKey(itemKey); setEditItemLabelVal(item.label); }} className="text-indigo-600 hover:text-indigo-800 p-1 cursor-pointer" title="Edit Nama">
                                     <Edit2 className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
@@ -439,39 +552,87 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                           </div>
                         </div>
 
+                        {/* Convert to Submenu Control */}
+                        <div className="flex items-center justify-between text-xs bg-indigo-50/60 border border-indigo-100 px-3 py-2 rounded-lg">
+                          <span className="text-indigo-900 font-medium flex items-center gap-1.5">
+                            <CornerDownRight className="w-3.5 h-3.5 text-indigo-600" /> Jadikan Submenu dari:
+                          </span>
+                          <select
+                            onChange={e => {
+                              const parentId = e.target.value;
+                              if (parentId) {
+                                handleConvertToSubmenu(gIdx, iIdx, parentId);
+                                e.target.value = '';
+                              }
+                            }}
+                            defaultValue=""
+                            className="px-2 py-1 bg-white border border-indigo-200 rounded text-xs font-semibold text-indigo-700 outline-none cursor-pointer"
+                          >
+                            <option value="" disabled>Pilih Menu Induk Baru...</option>
+                            {menus.flatMap(mg => mg.items).filter(it => it.id !== item.id).map(it => (
+                              <option key={it.id} value={it.id}>{it.label}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Subitems list */}
                         {item.subItems && item.subItems.length > 0 && (
-                          <div className="pl-11 pt-2 space-y-2 border-t border-slate-200/80 mt-2">
+                          <div className="pl-4 pt-2 space-y-2 border-t border-slate-200/80 mt-2">
                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Submenu ({item.subItems.length}):</div>
                             <div className="space-y-1.5">
                               {item.subItems.map((sub: any, sIdx: number) => {
                                 const subKey = `${gIdx}-${iIdx}-${sIdx}`;
                                 const isEditingSub = editingSubKey === subKey;
                                 return (
-                                  <div key={sub.id || sIdx} className="flex items-center justify-between bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-sm">
-                                    <div className="flex items-center gap-2 flex-1">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0"></span>
-                                      {isEditingSub ? (
-                                        <div className="flex items-center gap-2 w-full">
-                                          <input
-                                            type="text"
-                                            value={editSubLabelVal}
-                                            onChange={e => setEditSubLabelVal(e.target.value)}
-                                            className="px-2.5 py-0.5 bg-white border border-indigo-500 rounded text-xs font-semibold text-slate-800 outline-none w-full"
-                                            autoFocus
-                                          />
-                                          <button onClick={() => handleSaveSubLabel(gIdx, iIdx, sIdx)} className="px-2.5 py-0.5 bg-indigo-600 text-white text-[11px] font-bold rounded cursor-pointer">Simpan</button>
-                                          <button onClick={() => setEditingSubKey(null)} className="px-2 py-0.5 bg-slate-200 text-slate-700 text-[11px] rounded cursor-pointer">Batal</button>
-                                        </div>
-                                      ) : (
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-xs text-slate-700 font-medium">{sub.label}</span>
-                                          <button onClick={() => { setEditingSubKey(subKey); setEditSubLabelVal(sub.label); }} className="text-indigo-600 hover:text-indigo-800 cursor-pointer" title="Edit Submenu">
-                                            <Edit2 className="w-3 h-3" />
-                                          </button>
-                                        </div>
-                                      )}
+                                  <div key={sub.id || sIdx} className="bg-white border border-slate-200 p-3 rounded-xl shadow-sm space-y-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2 flex-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0"></span>
+                                        {isEditingSub ? (
+                                          <div className="flex items-center gap-2 w-full">
+                                            <input type="text" value={editSubLabelVal} onChange={e => setEditSubLabelVal(e.target.value)} className="px-2 py-0.5 border border-indigo-500 rounded text-xs font-semibold outline-none w-full" autoFocus />
+                                            <button onClick={() => handleSaveSubLabel(gIdx, iIdx, sIdx)} className="px-2 py-0.5 bg-indigo-600 text-white text-[11px] font-bold rounded cursor-pointer">Simpan</button>
+                                            <button onClick={() => setEditingSubKey(null)} className="px-2 py-0.5 bg-slate-200 text-[11px] rounded cursor-pointer">Batal</button>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-xs text-slate-800 font-semibold">{sub.label}</span>
+                                            <button onClick={() => { setEditingSubKey(subKey); setEditSubLabelVal(sub.label); }} className="text-indigo-600 hover:text-indigo-800 cursor-pointer" title="Edit Nama Submenu"><Edit2 className="w-3 h-3" /></button>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        <button
+                                          onClick={() => handlePromoteToMenu(gIdx, iIdx, sIdx)}
+                                          className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-[10px] flex items-center gap-1 cursor-pointer"
+                                          title="Jadikan Menu Utama"
+                                        >
+                                          <ArrowUpFromLine className="w-3 h-3" /> Jadikan Menu Utama
+                                        </button>
+                                        <button onClick={() => handleDeleteSubItem(gIdx, iIdx, sIdx)} className="p-1 rounded hover:bg-rose-100 text-rose-600 cursor-pointer" title="Hapus Submenu"><Trash2 className="w-3 h-3" /></button>
+                                      </div>
                                     </div>
-                                    <span className="text-[10px] font-mono text-slate-400 shrink-0 ml-2">{sub.id}</span>
+
+                                    {/* Change Parent of Submenu */}
+                                    <div className="flex items-center justify-between text-[11px] bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg">
+                                      <span className="text-slate-600 font-medium flex items-center gap-1">
+                                        <GitCommit className="w-3 h-3 text-indigo-600" /> Pindah Induk Ke:
+                                      </span>
+                                      <select
+                                        value={item.id}
+                                        onChange={e => {
+                                          const newParentId = e.target.value;
+                                          if (newParentId) {
+                                            handleChangeSubmenuParent(sub.id, newParentId);
+                                          }
+                                        }}
+                                        className="px-2 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-semibold text-slate-700 outline-none cursor-pointer"
+                                      >
+                                        {menus.flatMap(mg => mg.items).map(parentIt => (
+                                          <option key={parentIt.id} value={parentIt.id}>{parentIt.label}</option>
+                                        ))}
+                                      </select>
+                                    </div>
                                   </div>
                                 );
                               })}
@@ -614,7 +775,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
         <div className="space-y-4">
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
             <h2 className="text-lg font-bold text-slate-900">Visual Workflow & Data Integration (n8n Style)</h2>
-            <p className="text-sm text-slate-500 mt-0.5">Rancang pipeline integrasi data dengan menghubungkan node trigger, database source, dan aksi notifikasi secara visual.</p>
+            <p className="text-sm text-slate-500 mt-0.5">Rancang pipeline integrasi data secara visual.</p>
           </div>
           <WorkflowBuilder />
         </div>
@@ -625,22 +786,22 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
         <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm text-center space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto"><Eye className="w-8 h-8" /></div>
           <h2 className="text-xl font-bold text-slate-900">Pratinjau Sistem ERP</h2>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">Semua perubahan nama menu dan integrasi data telah diterapkan.</p>
+          <p className="text-sm text-slate-500 max-w-md mx-auto">Semua perubahan hirarki menu telah diterapkan selamanya.</p>
           <button onClick={() => onSelectTab('budget')} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-xl shadow cursor-pointer">Buka Beranda ERP</button>
         </div>
       )}
 
-      {/* Modal Add Menu */}
+      {/* Modal Add Menu / Submenu */}
       {showAddMenuModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h3 className="text-lg font-bold text-slate-900">Tambah Menu Baru</h3>
+              <h3 className="text-lg font-bold text-slate-900">Tambah Menu atau Submenu Baru</h3>
               <button onClick={() => setShowAddMenuModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Grup Area</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Grup Area Utama</label>
                 <select value={newMenuGroup} onChange={e => setNewMenuGroup(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none bg-white font-medium">
                   <option value="Workspace">Workspace</option>
                   <option value="Master Data">Master Data</option>
@@ -648,14 +809,26 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                   <option value="Sistem">Sistem</option>
                 </select>
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Nama Menu</label>
-                <input type="text" placeholder="Contoh: Quality Assurance" value={newMenuLabel} onChange={e => setNewMenuLabel(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none" />
+                <label className="block text-xs font-bold text-slate-700 mb-1">Jadikan Sebagai Submenu Dari (Opsional)</label>
+                <select value={newMenuParentId} onChange={e => setNewMenuParentId(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none bg-white font-medium">
+                  <option value="">(Buat sebagai Menu Utama baru)</option>
+                  {menus.flatMap(mg => mg.items).map(parentIt => (
+                    <option key={parentIt.id} value={parentIt.id}>Submenu di bawah: {parentIt.label}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-500 mt-1">Jika dipilih, menu baru ini akan otomatis menjadi submenu di bawah menu utama tersebut.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Nama Menu / Submenu Baru</label>
+                <input type="text" placeholder="Contoh: Laporan Pajak Bulanan" value={newMenuLabel} onChange={e => setNewMenuLabel(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none" />
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
               <button onClick={() => setShowAddMenuModal(false)} className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer">Batal</button>
-              <button onClick={handleAddMenu} className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow cursor-pointer">Simpan Menu</button>
+              <button onClick={handleAddMenu} className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow cursor-pointer">Simpan Permanen</button>
             </div>
           </div>
         </div>
@@ -680,7 +853,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
-              <button onClick={() => setShowAddDataModal(false)} className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer">BatalHubungkan</button>
+              <button onClick={() => setShowAddDataModal(false)} className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer">Batal</button>
               <button onClick={handleAddDataSourceRecord} className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow cursor-pointer">Simpan Record</button>
             </div>
           </div>
