@@ -422,6 +422,76 @@ export interface PurchaseOrder {
 }
 
 // ==========================================
+// Purchase Invoice Types (3-Way Matching: PO + DO + Invoice)
+// ==========================================
+
+export type PurchaseInvoiceStatus = 'draft' | 'unpaid' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled';
+
+export interface PurchaseInvoiceLine {
+  id: string;
+  itemCode?: string;
+  itemName: string;
+  description?: string;
+  poQty?: number; // Qty yang tertera pada Purchase Order
+  doQty: number; // Qty barang fisik yang diterima pada Surat Jalan / Delivery Order
+  uom: string;
+  unitPrice: number; // Harga satuan sesuai PO
+  totalPrice: number; // doQty * unitPrice
+  notes?: string;
+}
+
+export interface PurchaseInvoice {
+  id: string;
+  invoiceNo: string; // Nomor Tagihan / Faktur dari Supplier (e.g. INV-SUP/2026/03/001)
+  taxInvoiceNo?: string; // No Seri Faktur Pajak PPN (e.g. 010.002-26.88219401)
+  invoiceDate: string; // YYYY-MM-DD
+  dueDate: string; // YYYY-MM-DD (Jatuh tempo pembayaran)
+
+  // 3-Way Match References
+  poNumber: string; // Referensi No PO yang sudah dikirim ke supplier (e.g. PO/2026/03/001)
+  poDate?: string;
+  deliveryOrderNo: string; // Referensi Bukti Surat Jalan / Delivery Order yang diterima gudang (e.g. DO-SUP/2026/03/042)
+  deliveryOrderDate?: string; // Tanggal penerimaan barang fisik di pabrik
+  receivedBy?: string; // Petugas gudang / QC yang menerima barang
+
+  supplierCode: string;
+  supplierName: string;
+  supplierNpwp?: string;
+  supplierAddress?: string;
+  paymentTerms: string; // e.g. NET 14, NET 30, NET 45, NET 60, COD
+  bankAccount?: string; // Rekening bank supplier untuk pelunasan tagihan
+
+  currency: string; // USD, IDR, JPY, EUR
+  rate: number; // Kurs terhadap USD atau IDR
+  subtotal: number; // DPP (Dasar Pengenaan Pajak)
+  taxPercent: number; // Persentase PPN (misal 11% atau 0% Kawasan Berikat)
+  taxAmount: number; // Nilai PPN
+  discountAmount?: number;
+  freightCost?: number; // Biaya pengiriman / handling jika ada
+  grandTotal: number; // subtotal + taxAmount - discount + freight
+  grandTotalUSD?: number;
+
+  paidAmount?: number; // Jumlah yang telah dibayarkan
+  remainingAmount?: number; // Sisa saldo yang belum dibayar
+  paymentDate?: string; // Tanggal pelunasan
+
+  status: PurchaseInvoiceStatus;
+  matchStatus: 'matched' | 'discrepancy' | 'pending_verification'; // Status 3-Way Matching
+
+  items: PurchaseInvoiceLine[];
+  notes?: string;
+  checkedBy?: string;
+  checkedAt?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================
 // Master Data Types
 // ==========================================
 
@@ -596,6 +666,8 @@ export type AppPermission =
   | 'purchase'
   | 'purchaseRequest'
   | 'purchaseOrder'
+  | 'purchaseInvoice'
+  | 'purchase-invoice'
   | 'sales'
   | 'salesPlan'
   | 'salesDelivery'
@@ -647,6 +719,7 @@ export type AuditModule =
   | 'Kas dan Bank (Pembayaran)'
   | 'Purchase Request'
   | 'Purchase Order'
+  | 'Purchase Invoice'
   | 'Sales'
   | 'Sales Plan'
   | 'Sales Delivery'
@@ -708,6 +781,7 @@ export interface AppState {
   returnFromProdItems?: ReturnFromProdItem[];
   purchaseRequests?: PurchaseRequest[];
   purchaseOrders?: PurchaseOrder[];
+  purchaseInvoices?: PurchaseInvoice[];
   suppliers?: Supplier[];
   customers?: Customer[];
   itemStocks?: ItemStock[];

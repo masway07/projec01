@@ -1089,12 +1089,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           items={inventoryItems.filter(i => i.category === 'mold_sparepart')} 
           startDate={startDate}
           endDate={endDate}
+          returnItems={returnFromProdItems}
         />
       ) : selectedCategory === 'mold_sparepart' && activeGroupId ? (
         <InventoryMoldSubTable 
           items={filteredItems} 
           startDate={startDate}
           endDate={endDate}
+          returnItems={returnFromProdItems}
         />
       ) : (
         <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xs">

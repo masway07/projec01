@@ -28,6 +28,7 @@ import { MasterProsesView } from './components/MasterProsesView';
 import { MasterRateHarianView } from './components/MasterRateHarianView';
 import { PurchaseRequestView } from './components/PurchaseRequestView';
 import { PurchaseOrderView } from './components/PurchaseOrderView';
+import { PurchaseInvoiceView } from './components/PurchaseInvoiceView';
 import { CashBankView } from './components/CashBankView';
 import {
   AppState,
@@ -54,6 +55,7 @@ import {
   DailyRate,
   PurchaseRequest,
   PurchaseOrder,
+  PurchaseInvoice,
   CashBankAccount,
   CashBankReceipt,
   CashBankPayment,
@@ -75,6 +77,7 @@ import {
   DEFAULT_DAILY_RATES,
   DEFAULT_PURCHASE_REQUESTS,
   DEFAULT_PURCHASE_ORDERS,
+  DEFAULT_PURCHASE_INVOICES,
   DEFAULT_CASH_BANK_ACCOUNTS,
   DEFAULT_CASH_BANK_RECEIPTS,
   DEFAULT_CASH_BANK_PAYMENTS,
@@ -257,6 +260,9 @@ export default function App() {
           purchaseOrders: Array.isArray(parsed.purchaseOrders)
             ? parsed.purchaseOrders
             : DEFAULT_PURCHASE_ORDERS,
+          purchaseInvoices: Array.isArray(parsed.purchaseInvoices)
+            ? parsed.purchaseInvoices
+            : DEFAULT_PURCHASE_INVOICES,
           cashBankAccounts: Array.isArray(parsed.cashBankAccounts)
             ? parsed.cashBankAccounts
             : DEFAULT_CASH_BANK_ACCOUNTS,
@@ -296,6 +302,7 @@ export default function App() {
       dailyRates: DEFAULT_DAILY_RATES,
       purchaseRequests: DEFAULT_PURCHASE_REQUESTS,
       purchaseOrders: DEFAULT_PURCHASE_ORDERS,
+      purchaseInvoices: DEFAULT_PURCHASE_INVOICES,
       cashBankAccounts: DEFAULT_CASH_BANK_ACCOUNTS,
       cashBankReceipts: DEFAULT_CASH_BANK_RECEIPTS,
       cashBankPayments: DEFAULT_CASH_BANK_PAYMENTS,
@@ -2273,6 +2280,119 @@ export default function App() {
     showToast(`Status PO ${target.poNumber} diperbarui ke ${newStatus}.`, 'success');
   };
 
+  // ===================== WORKSPACE: PURCHASE INVOICE HANDLERS =====================
+  const handleAddPurchaseInvoice = (invData: Omit<PurchaseInvoice, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newInv: PurchaseInvoice = {
+      ...invData,
+      id: `pi_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      purchaseInvoices: [newInv, ...(prev.purchaseInvoices || [])]
+    }), {
+      action: 'CREATE',
+      module: 'Purchase Invoice',
+      details: `Penerbitan Faktur Pembelian (Purchase Invoice) [${newInv.invoiceNo}] untuk PO [${newInv.poNumber}] / DO [${newInv.deliveryOrderNo}] dari supplier ${newInv.supplierName}`
+    });
+    showToast(`Purchase Invoice ${newInv.invoiceNo} berhasil dicatat!`, 'success');
+  };
+
+  const handleUpdatePurchaseInvoice = (id: string, updates: Partial<PurchaseInvoice>) => {
+    const target = (appState.purchaseInvoices || []).find(p => p.id === id);
+    if (!target) return;
+    const updated: PurchaseInvoice = {
+      ...target,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      purchaseInvoices: (prev.purchaseInvoices || []).map(p => p.id === id ? updated : p)
+    }), {
+      action: 'UPDATE',
+      module: 'Purchase Invoice',
+      details: `Memperbarui Purchase Invoice [${updated.invoiceNo}]`
+    });
+    showToast(`Purchase Invoice ${updated.invoiceNo} berhasil diperbarui!`, 'success');
+  };
+
+  const handleDeletePurchaseInvoice = (id: string) => {
+    const target = (appState.purchaseInvoices || []).find(p => p.id === id);
+    updateAndSyncState(prev => ({
+      ...prev,
+      purchaseInvoices: (prev.purchaseInvoices || []).filter(p => p.id !== id)
+    }), {
+      action: 'DELETE',
+      module: 'Purchase Invoice',
+      details: `Menghapus Purchase Invoice [${target?.invoiceNo || id}]`
+    });
+    showToast('Purchase Invoice berhasil dihapus.', 'info');
+  };
+
+  const handleCheckPurchaseInvoice = (id: string, userName: string) => {
+    const target = (appState.purchaseInvoices || []).find(p => p.id === id);
+    if (!target) return;
+    const updated: PurchaseInvoice = {
+      ...target,
+      checkedBy: userName || currentUser?.name || 'Checker',
+      checkedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      purchaseInvoices: (prev.purchaseInvoices || []).map(p => p.id === id ? updated : p)
+    }), {
+      action: 'UPDATE',
+      module: 'Purchase Invoice',
+      details: `Memeriksa Purchase Invoice [${target.invoiceNo}]`
+    });
+    showToast(`Purchase Invoice ${target.invoiceNo} berhasil diverifikasi (Checked)!`, 'success');
+  };
+
+  const handleApprovePurchaseInvoice = (id: string, userName: string) => {
+    const target = (appState.purchaseInvoices || []).find(p => p.id === id);
+    if (!target) return;
+    const updated: PurchaseInvoice = {
+      ...target,
+      approvedBy: userName || currentUser?.name || 'Approver',
+      approvedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      purchaseInvoices: (prev.purchaseInvoices || []).map(p => p.id === id ? updated : p)
+    }), {
+      action: 'UPDATE',
+      module: 'Purchase Invoice',
+      details: `Menyetujui Purchase Invoice [${target.invoiceNo}]`
+    });
+    showToast(`Purchase Invoice ${target.invoiceNo} telah disetujui (Approved)!`, 'success');
+  };
+
+  const handleRejectPurchaseInvoice = (id: string, userName: string, reason: string) => {
+    const target = (appState.purchaseInvoices || []).find(p => p.id === id);
+    if (!target) return;
+    const updated: PurchaseInvoice = {
+      ...target,
+      status: 'cancelled',
+      rejectedBy: userName || currentUser?.name || 'Approver',
+      rejectedAt: new Date().toISOString(),
+      rejectionReason: reason,
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      purchaseInvoices: (prev.purchaseInvoices || []).map(p => p.id === id ? updated : p)
+    }), {
+      action: 'UPDATE',
+      module: 'Purchase Invoice',
+      details: `Menolak Purchase Invoice [${target.invoiceNo}]: ${reason}`
+    });
+    showToast(`Purchase Invoice ${target.invoiceNo} ditolak.`, 'error');
+  };
+
   // ===================== BACKUP & RESTORE HANDLERS =====================
   const handleRestoreState = (newState: AppState) => {
     updateAndSyncState(() => ({
@@ -2297,7 +2417,12 @@ export default function App() {
       productionProcesses: Array.isArray(newState.productionProcesses) ? newState.productionProcesses : DEFAULT_PRODUCTION_PROCESSES,
       dailyRates: Array.isArray(newState.dailyRates) ? newState.dailyRates : DEFAULT_DAILY_RATES,
       purchaseRequests: Array.isArray(newState.purchaseRequests) ? newState.purchaseRequests : DEFAULT_PURCHASE_REQUESTS,
-      purchaseOrders: Array.isArray(newState.purchaseOrders) ? newState.purchaseOrders : DEFAULT_PURCHASE_ORDERS
+      purchaseOrders: Array.isArray(newState.purchaseOrders) ? newState.purchaseOrders : DEFAULT_PURCHASE_ORDERS,
+      purchaseInvoices: Array.isArray(newState.purchaseInvoices) ? newState.purchaseInvoices : DEFAULT_PURCHASE_INVOICES,
+      cashBankAccounts: Array.isArray(newState.cashBankAccounts) ? newState.cashBankAccounts : DEFAULT_CASH_BANK_ACCOUNTS,
+      cashBankReceipts: Array.isArray(newState.cashBankReceipts) ? newState.cashBankReceipts : DEFAULT_CASH_BANK_RECEIPTS,
+      cashBankPayments: Array.isArray(newState.cashBankPayments) ? newState.cashBankPayments : DEFAULT_CASH_BANK_PAYMENTS,
+      returnFromProdItems: Array.isArray(newState.returnFromProdItems) ? newState.returnFromProdItems : DEFAULT_RETURN_FROM_PROD_ITEMS
     }), {
       action: 'IMPORT',
       module: 'Sistem',
@@ -2328,9 +2453,11 @@ export default function App() {
       dailyRates: DEFAULT_DAILY_RATES,
       purchaseRequests: DEFAULT_PURCHASE_REQUESTS,
       purchaseOrders: DEFAULT_PURCHASE_ORDERS,
+      purchaseInvoices: DEFAULT_PURCHASE_INVOICES,
       cashBankAccounts: DEFAULT_CASH_BANK_ACCOUNTS,
       cashBankReceipts: DEFAULT_CASH_BANK_RECEIPTS,
-      cashBankPayments: DEFAULT_CASH_BANK_PAYMENTS
+      cashBankPayments: DEFAULT_CASH_BANK_PAYMENTS,
+      returnFromProdItems: DEFAULT_RETURN_FROM_PROD_ITEMS
     }), {
       action: 'RESET',
       module: 'Sistem',
@@ -2557,7 +2684,9 @@ export default function App() {
     activeTab === 'purchaseRequest' ||
     activeTab === 'purchase-request' ||
     activeTab === 'purchaseOrder' ||
-    activeTab === 'purchase-order';
+    activeTab === 'purchase-order' ||
+    activeTab === 'purchaseInvoice' ||
+    activeTab === 'purchase-invoice';
 
   const isCashBankTab =
     activeTab === 'cashBank' ||
@@ -2589,7 +2718,9 @@ export default function App() {
       : isPurchaseTab
       ? (currentUser.permissions.includes('purchase') ||
          currentUser.permissions.includes('purchaseRequest') ||
-         currentUser.permissions.includes('purchaseOrder'))
+         currentUser.permissions.includes('purchaseOrder') ||
+         currentUser.permissions.includes('purchaseInvoice') ||
+         currentUser.permissions.includes('purchase-invoice'))
       : isCashBankTab
       ? (currentUser.permissions.includes('cashBank') ||
          currentUser.permissions.includes('bukuBank') ||
@@ -2959,6 +3090,25 @@ export default function App() {
                 onUpdatePO={handleUpdatePO}
                 onDeletePO={handleDeletePO}
                 onMarkStatusPO={handleMarkStatusPO}
+              />
+            )}
+
+            {isTabPermitted && (activeTab === 'purchase-invoice' || activeTab === 'purchaseInvoice') && (
+              <PurchaseInvoiceView
+                invoices={appState.purchaseInvoices || []}
+                purchaseOrders={appState.purchaseOrders || []}
+                suppliers={appState.suppliers || []}
+                ratesByYear={appState.ratesByYear}
+                currentUser={currentUser}
+                companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
+                onAddInvoice={handleAddPurchaseInvoice}
+                onUpdateInvoice={handleUpdatePurchaseInvoice}
+                onDeleteInvoice={handleDeletePurchaseInvoice}
+                onCheckInvoice={handleCheckPurchaseInvoice}
+                onApproveInvoice={handleApprovePurchaseInvoice}
+                onRejectInvoice={handleRejectPurchaseInvoice}
+                activePurchaseTab="purchase-invoice"
+                onSwitchPurchaseTab={tab => setActiveTab(tab)}
               />
             )}
 

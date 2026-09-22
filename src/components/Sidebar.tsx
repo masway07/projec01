@@ -110,6 +110,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           subItems: [
             { id: 'purchase-request', label: 'Purchase Request', category: 'purchase_request' },
             { id: 'purchase-order', label: 'Purchase Order', category: 'purchase_order' },
+            { id: 'purchase-invoice', label: 'Purchase Invoice', category: 'purchase_invoice' },
           ]
         },
         {
@@ -260,7 +261,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               return (
                 currentUser.permissions.includes('purchase') ||
                 currentUser.permissions.includes('purchaseRequest') ||
-                currentUser.permissions.includes('purchaseOrder')
+                currentUser.permissions.includes('purchaseOrder') ||
+                currentUser.permissions.includes('purchaseInvoice')
               );
             }
             if (item.id === 'sales') {
@@ -297,7 +299,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     )) ||
                     (item.id === 'purchase' && (
                       ((activeTab === 'purchase' || activeTab === 'purchase-request' || activeTab === 'purchaseRequest') && s.id === 'purchase-request') ||
-                      ((activeTab === 'purchase-order' || activeTab === 'purchaseOrder') && s.id === 'purchase-order')
+                      ((activeTab === 'purchase-order' || activeTab === 'purchaseOrder') && s.id === 'purchase-order') ||
+                      ((activeTab === 'purchase-invoice' || activeTab === 'purchaseInvoice') && s.id === 'purchase-invoice')
                     )) ||
                     (activeTab === 'inventory' && s.id === 'inventory-raw-material') ||
                     ((activeTab === 'sales' || activeTab === 'salesPlan') && s.id === 'sales-plan') ||
@@ -358,6 +361,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   (activeTab === 'realisasi' && sub.id === 'realisasi')
                                 )) ||
                                 (activeTab === 'inventory' && sub.id === 'inventory-raw-material') ||
+                                ((activeTab === 'purchaseInvoice' || activeTab === 'purchase-invoice') && sub.id === 'purchase-invoice') ||
                                 ((activeTab === 'sales' || activeTab === 'salesPlan') && sub.id === 'sales-plan') ||
                                 (activeTab === 'salesDelivery' && sub.id === 'sales-delivery') ||
                                 (activeTab === 'salesInvoice' && sub.id === 'sales-invoice') ||
