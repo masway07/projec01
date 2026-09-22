@@ -260,7 +260,50 @@ export interface FixedAssetItem {
   updatedAt?: string;
 }
 
-export type InventoryCategory = 'raw_material' | 'mold_sparepart' | 'wip' | 'finish_good';
+export type InventoryCategory = 'raw_material' | 'mold_sparepart' | 'wip' | 'finish_good' | 'return_from_prod';
+
+export type ReturnCondition = 'good' | 'sortir' | 'scrap' | 'rework' | 'damaged';
+export type ReturnStatus = 'draft' | 'checked' | 'approved' | 'rejected';
+
+export interface ReturnFromProdItem {
+  id: string;
+  returnNo: string; // e.g. "RFP/2026/09/001"
+  returnNumber?: string; // alias
+  date: string; // YYYY-MM-DD
+  itemCode: string;
+  partNo?: string;
+  itemName: string;
+  category: InventoryCategory;
+  qty: number; // Return quantity
+  returnedQty?: number; // alias
+  uom: string;
+  deptCode?: string; // Production department
+  deptName?: string;
+  productionBatchNo?: string; // No Batch / SPK
+  workOrderNo?: string; // No Work Order (WO)
+  shift?: string; // Shift 1, Shift 2, Shift 3
+  reason: string; // Sisa Bahan, Kelebihan Pengambilan, Pergantian Dies, Sortir, dll.
+  productionLine?: string; // Line Cold Forging 2R, Line Stamping 4R, Machining, dll.
+  condition: ReturnCondition; // 'good' | 'sortir' | 'scrap' | 'rework' | 'damaged'
+  location?: string; // Lokasi rak/bin gudang
+  receivedLocation?: string; // Lokasi rak/bin gudang (alias)
+  returnedBy?: string; // Nama penyerah dari produksi
+  receivedBy?: string; // Petugas gudang penerima
+  status: ReturnStatus; // 'draft' | 'checked' | 'approved' | 'rejected'
+  checkedBy?: string;
+  checkedAt?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  rejectReason?: string;
+  rejectionReason?: string; // alias
+  unitCostUSD?: number;
+  totalValueUSD?: number;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export interface InventoryItem {
   id: string;
@@ -539,6 +582,8 @@ export interface CashBankPayment {
 
 export type UserRole = 'admin' | 'finance' | 'dept_user' | 'custom';
 
+export type UserActionPermission = 'check' | 'approve' | 'reject';
+
 export type AppPermission =
   | 'budget'
   | 'dashboard'
@@ -585,12 +630,13 @@ export interface AppUser {
   role: UserRole;
   roleLabel: string;
   permissions: AppPermission[];
+  actionPermissions?: UserActionPermission[];
   deptCode?: string;
   isActive: boolean;
   createdAt: string;
 }
 
-export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'BATCH_DELETE' | 'IMPORT' | 'RESET' | 'APPROVE' | 'REJECT';
+export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'BATCH_DELETE' | 'IMPORT' | 'RESET' | 'CHECK' | 'APPROVE' | 'REJECT';
 
 export type AuditModule =
   | 'Dept Planning (Budget)'
@@ -611,6 +657,7 @@ export type AuditModule =
   | 'Inventory (Mold & Spare Part)'
   | 'Inventory (WIP)'
   | 'Inventory (Finish Good)'
+  | 'Inventory (Return from Prod)'
   | 'Summary Budget'
   | 'Realisasi Budget'
   | 'Master Dept'
@@ -658,6 +705,7 @@ export interface AppState {
   salesInvoiceItems?: SalesInvoiceItem[];
   fixedAssetItems?: FixedAssetItem[];
   inventoryItems?: InventoryItem[];
+  returnFromProdItems?: ReturnFromProdItem[];
   purchaseRequests?: PurchaseRequest[];
   purchaseOrders?: PurchaseOrder[];
   suppliers?: Supplier[];

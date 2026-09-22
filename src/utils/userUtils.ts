@@ -1,4 +1,42 @@
-import { AppPermission, AppUser, UserRole } from '../types';
+import { AppPermission, AppUser, UserActionPermission, UserRole } from '../types';
+
+export const ALL_ACTION_PERMISSIONS: {
+  id: UserActionPermission;
+  label: string;
+  shortLabel: string;
+  description: string;
+  badgeBg: string;
+  badgeText: string;
+  badgeBorder: string;
+}[] = [
+  {
+    id: 'check',
+    label: 'Check / Reviewer (Pemeriksa)',
+    shortLabel: 'Check',
+    description: 'Memeriksa, meneliti fisik & keabsahan dokumen/barang sebelum diteruskan ke tahap persetujuan (PR, PO, Return from Prod, dsb.)',
+    badgeBg: 'bg-blue-50',
+    badgeText: 'text-blue-700',
+    badgeBorder: 'border-blue-200'
+  },
+  {
+    id: 'approve',
+    label: 'Approve / Approver (Penyetuju)',
+    shortLabel: 'Approve',
+    description: 'Memberikan persetujuan resmi (approval) agar transaksi, anggaran, PO, dan pengembalian barang masuk sah tercatat',
+    badgeBg: 'bg-emerald-50',
+    badgeText: 'text-emerald-700',
+    badgeBorder: 'border-emerald-200'
+  },
+  {
+    id: 'reject',
+    label: 'Reject / Rejector (Penolak)',
+    shortLabel: 'Reject',
+    description: 'Menolak atau membatalkan dokumen atau barang yang tidak sesuai standar dengan menyertakan alasan perbaikan',
+    badgeBg: 'bg-rose-50',
+    badgeText: 'text-rose-700',
+    badgeBorder: 'border-rose-200'
+  }
+];
 
 export const ALL_PERMISSIONS: { id: AppPermission; label: string; description: string }[] = [
   { id: 'budget', label: 'Budget (Semua Modul)', description: 'Akses penuh modul Budget (Summary Budget, Rencana Anggaran, Dept Planning, dan Realisasi Budget)' },
@@ -17,7 +55,7 @@ export const ALL_PERMISSIONS: { id: AppPermission; label: string; description: s
   { id: 'salesDelivery', label: 'Sales Delivery', description: 'Surat Jalan / Pengiriman Barang (Delivery Order)' },
   { id: 'salesInvoice', label: 'Sales Invoice', description: 'Faktur Penjualan, Commercial Invoice, Faktur Pajak & Tagihan' },
   { id: 'fixedAsset', label: 'Fixed Asset', description: 'Pengelolaan daftar aset tetap, nilai perolehan, dan konversi USD' },
-  { id: 'inventory', label: 'Inventory', description: 'Pengelolaan persediaan Raw Material, Mold & Spare Part, Work In Process, dan Finish Good' },
+  { id: 'inventory', label: 'Inventory', description: 'Pengelolaan persediaan Raw Material, Mold & Spare Part, WIP, Finish Good, dan Return from Prod' },
   { id: 'realisasi', label: 'Realisasi Budget', description: 'Mencatat penggunaan budget after cost down & kontrol sisa budget' },
   { id: 'dept', label: 'Master Department', description: 'Mengelola daftar kode dan nama departemen' },
   { id: 'supplier', label: 'Master Supplier', description: 'Daftar vendor/supplier, alamat, kontak, dan termin pembayaran' },
@@ -33,15 +71,16 @@ export const ALL_PERMISSIONS: { id: AppPermission; label: string; description: s
   { id: 'settings', label: 'Pengaturan Perusahaan', description: 'Identitas perusahaan, nama PT, logo URL, dan alamat untuk kop laporan' },
 ];
 
-export const ROLE_PRESETS: Record<UserRole, { label: string; permissions: AppPermission[]; description: string }> = {
+export const ROLE_PRESETS: Record<UserRole, { label: string; permissions: AppPermission[]; actionPermissions: UserActionPermission[]; description: string }> = {
   admin: {
     label: 'Administrator (Akses Penuh)',
-    description: 'Memiliki akses ke seluruh menu, konfigurasi sistem, audit trail, perusahaan, dan manajemen user',
-    permissions: ALL_PERMISSIONS.map(p => p.id)
+    description: 'Memiliki akses ke seluruh menu, konfigurasi sistem, audit trail, perusahaan, dan hak otorisasi penuh (Check, Approve, Reject)',
+    permissions: ALL_PERMISSIONS.map(p => p.id),
+    actionPermissions: ['check', 'approve', 'reject']
   },
   finance: {
     label: 'Finance & Accounting',
-    description: 'Mengelola perencanaan budget, realisasi pengeluaran, kas & bank, purchase, sales, fixed asset, inventory, master data, kurs, dan informasi perusahaan',
+    description: 'Mengelola perencanaan budget, realisasi pengeluaran, kas & bank, purchase, sales, fixed asset, inventory, master data, kurs, dan hak verifikasi & persetujuan',
     permissions: [
       'budget',
       'dashboard',
@@ -70,11 +109,12 @@ export const ROLE_PRESETS: Record<UserRole, { label: string; permissions: AppPer
       'coa',
       'rate',
       'settings'
-    ]
+    ],
+    actionPermissions: ['check', 'approve', 'reject']
   },
   dept_user: {
     label: 'Department User',
-    description: 'Melihat planning departemen, kas & bank, purchase request, sales, fixed asset, inventory, master data, mencatat penggunaan budget, dan summary budget',
+    description: 'Melihat planning departemen, kas & bank, purchase request, sales, fixed asset, inventory, mencatat penggunaan budget, dan hak pemeriksaan (Check)',
     permissions: [
       'budget',
       'dashboard',
@@ -101,11 +141,12 @@ export const ROLE_PRESETS: Record<UserRole, { label: string; permissions: AppPer
       'dailyRates',
       'coa',
       'rate'
-    ]
+    ],
+    actionPermissions: ['check']
   },
   custom: {
     label: 'Custom (Kustomisasi Mandiri)',
-    description: 'Hak akses disesuaikan per modul secara manual',
+    description: 'Hak akses menu dan hak aksi otorisasi (Check, Approve, Reject) diatur secara manual',
     permissions: [
       'budget',
       'dashboard',
@@ -128,7 +169,8 @@ export const ROLE_PRESETS: Record<UserRole, { label: string; permissions: AppPer
       'dailyRates',
       'coa',
       'rate'
-    ]
+    ],
+    actionPermissions: ['check']
   }
 };
 
@@ -190,6 +232,7 @@ export const DEFAULT_USERS: AppUser[] = [
     role: 'admin',
     roleLabel: 'Administrator (Akses Penuh)',
     permissions: ROLE_PRESETS.admin.permissions,
+    actionPermissions: ROLE_PRESETS.admin.actionPermissions,
     isActive: true,
     createdAt: '2026-01-01T08:00:00.000Z'
   },
@@ -201,6 +244,7 @@ export const DEFAULT_USERS: AppUser[] = [
     role: 'finance',
     roleLabel: 'Finance & Accounting',
     permissions: ROLE_PRESETS.finance.permissions,
+    actionPermissions: ROLE_PRESETS.finance.actionPermissions,
     deptCode: 'ACC',
     isActive: true,
     createdAt: '2026-01-05T09:30:00.000Z'
@@ -213,6 +257,7 @@ export const DEFAULT_USERS: AppUser[] = [
     role: 'dept_user',
     roleLabel: 'Department User',
     permissions: ROLE_PRESETS.dept_user.permissions,
+    actionPermissions: ROLE_PRESETS.dept_user.actionPermissions,
     deptCode: 'ACC',
     isActive: true,
     createdAt: '2026-01-10T11:00:00.000Z'

@@ -5,7 +5,9 @@ import {
   COA,
   ExchangeRates,
   CompanySettings,
-  AppUser
+  AppUser,
+  ReturnFromProdItem,
+  Department
 } from '../types';
 import {
   Package,
@@ -30,11 +32,13 @@ import {
   Coins,
   TrendingDown,
   TrendingUp,
-  Tag
+  Tag,
+  RotateCcw
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { InventoryMoldSummaryTable } from './InventoryMoldSummaryTable';
 import { InventoryMoldSubTable } from './InventoryMoldSubTable';
+import { ReturnFromProdView } from './ReturnFromProdView';
 
 interface InventoryViewProps {
   inventoryItems: InventoryItem[];
@@ -49,6 +53,14 @@ interface InventoryViewProps {
   activeSubCategory?: InventoryCategory;
   activeGroupId?: string;
   onSubCategoryChange?: (category: InventoryCategory) => void;
+  returnFromProdItems?: ReturnFromProdItem[];
+  departments?: Department[];
+  onAddReturnFromProd?: (item: Omit<ReturnFromProdItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onUpdateReturnFromProd?: (id: string, updates: Partial<ReturnFromProdItem>) => void;
+  onDeleteReturnFromProd?: (id: string) => void;
+  onCheckReturnFromProd?: (id: string) => void;
+  onApproveReturnFromProd?: (id: string) => void;
+  onRejectReturnFromProd?: (id: string, reason: string) => void;
 }
 
 export const SUB_MENU_CONFIG: {
@@ -105,6 +117,17 @@ export const SUB_MENU_CONFIG: {
     bgLight: 'bg-emerald-50',
     borderLight: 'border-emerald-200',
     description: 'Barang jadi siap kirim ke customer (AHM, Jatco, FCC, HPPM, Aichikiki, dsb.)'
+  },
+  {
+    id: 'return_from_prod',
+    label: 'Return from Prod',
+    defaultCoaCode: '1080006',
+    defaultCoaName: 'Inventory - Return from Production',
+    icon: RotateCcw,
+    color: 'text-teal-600',
+    bgLight: 'bg-teal-50',
+    borderLight: 'border-teal-200',
+    description: 'Pengembalian sisa material, tooling aus, atau WIP dari lini produksi ke gudang'
   }
 ];
 
@@ -146,7 +169,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   companySettings,
   activeSubCategory = 'raw_material',
   activeGroupId,
-  onSubCategoryChange
+  onSubCategoryChange,
+  returnFromProdItems = [],
+  departments = [],
+  onAddReturnFromProd,
+  onUpdateReturnFromProd,
+  onDeleteReturnFromProd,
+  onCheckReturnFromProd,
+  onApproveReturnFromProd,
+  onRejectReturnFromProd
 }) => {
   // Selected Sub Category State
   const [selectedCategory, setSelectedCategory] = useState<InventoryCategory>(activeSubCategory);
@@ -296,13 +327,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
     };
   }, [filteredItems, activeRateIDR]);
 
-  // Global Counts across all 4 sub-menus for tabs badges
+  // Global Counts across all 5 sub-menus for tabs badges
   const categoryCounts = useMemo(() => {
     const map: Record<InventoryCategory, number> = {
       raw_material: 0,
       mold_sparepart: 0,
       wip: 0,
-      finish_good: 0
+      finish_good: 0,
+      return_from_prod: (returnFromProdItems || []).length
     };
     inventoryItems.forEach(item => {
       if (map[item.category] !== undefined) {
@@ -310,7 +342,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       }
     });
     return map;
-  }, [inventoryItems]);
+  }, [inventoryItems, returnFromProdItems]);
 
   // Format numbers helper
   const formatNumber = (val: number, decimals: number = 2): string => {
@@ -752,48 +784,50 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2.5 flex-wrap w-full lg:w-auto">
-            <button
-              onClick={openAddModal}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-indigo-600/30 transition cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Item</span>
-            </button>
+          {selectedCategory !== 'return_from_prod' && (
+            <div className="flex items-center gap-2.5 flex-wrap w-full lg:w-auto">
+              <button
+                onClick={openAddModal}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-indigo-600/30 transition cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tambah Item</span>
+              </button>
 
-            <button
-              onClick={handleExportExcel}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition cursor-pointer"
-              title="Download format Excel"
-            >
-              <Download className="w-4 h-4 text-emerald-600" />
-              <span>Export Excel</span>
-            </button>
+              <button
+                onClick={handleExportExcel}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                title="Download format Excel"
+              >
+                <Download className="w-4 h-4 text-emerald-600" />
+                <span>Export Excel</span>
+              </button>
 
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition cursor-pointer"
-              title="Upload file Excel"
-            >
-              <Upload className="w-4 h-4 text-indigo-600" />
-              <span>Import Excel</span>
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx, .xls, .csv"
-              onChange={handleFileImport}
-              className="hidden"
-            />
-          </div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                title="Upload file Excel"
+              >
+                <Upload className="w-4 h-4 text-indigo-600" />
+                <span>Import Excel</span>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx, .xls, .csv"
+                onChange={handleFileImport}
+                className="hidden"
+              />
+            </div>
+          )}
         </div>
 
-        {/* SUB-MENU TABS NAVIGATION (4 Sub-menus as requested) */}
+        {/* SUB-MENU TABS NAVIGATION (5 Sub-menus) */}
         <div className="pt-4">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">
             Pilih Sub Menu Inventory:
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
             {SUB_MENU_CONFIG.map(sub => {
               const isSelected = sub.id === selectedCategory;
               const count = categoryCounts[sub.id] || 0;
@@ -881,6 +915,21 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         </div>
       </div>
 
+      {selectedCategory === 'return_from_prod' ? (
+        <ReturnFromProdView
+          returnItems={returnFromProdItems}
+          inventoryItems={inventoryItems}
+          departments={departments}
+          currentUser={currentUser}
+          onAddReturnItem={onAddReturnFromProd || (() => {})}
+          onUpdateReturnItem={onUpdateReturnFromProd || (() => {})}
+          onDeleteReturnItem={onDeleteReturnFromProd || (() => {})}
+          onCheckReturnItem={onCheckReturnFromProd || (() => {})}
+          onApproveReturnItem={onApproveReturnFromProd || (() => {})}
+          onRejectReturnItem={onRejectReturnFromProd || (() => {})}
+        />
+      ) : (
+        <>
       {/* SUMMARY KPI METRIC CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total SKU / Items */}
@@ -1608,6 +1657,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             </form>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

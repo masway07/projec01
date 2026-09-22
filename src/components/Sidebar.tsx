@@ -156,6 +156,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             },
             { id: 'inventory-wip', label: 'Work In Process', category: 'wip' },
             { id: 'inventory-finish-good', label: 'Finish Good', category: 'finish_good' },
+            { id: 'inventory-return-from-prod', label: 'Return from Prod', category: 'return_from_prod' },
           ]
         },
       ]

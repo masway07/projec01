@@ -56,7 +56,8 @@ import {
   PurchaseOrder,
   CashBankAccount,
   CashBankReceipt,
-  CashBankPayment
+  CashBankPayment,
+  ReturnFromProdItem
 } from './types';
 import {
   DEFAULT_COA,
@@ -77,6 +78,7 @@ import {
   DEFAULT_CASH_BANK_ACCOUNTS,
   DEFAULT_CASH_BANK_RECEIPTS,
   DEFAULT_CASH_BANK_PAYMENTS,
+  DEFAULT_RETURN_FROM_PROD_ITEMS,
   DP_MONTHS,
   INITIAL_SAMPLE_MONTHLY_DATA
 } from './constants/defaultData';
@@ -263,7 +265,10 @@ export default function App() {
             : DEFAULT_CASH_BANK_RECEIPTS,
           cashBankPayments: Array.isArray(parsed.cashBankPayments)
             ? parsed.cashBankPayments
-            : DEFAULT_CASH_BANK_PAYMENTS
+            : DEFAULT_CASH_BANK_PAYMENTS,
+          returnFromProdItems: Array.isArray(parsed.returnFromProdItems)
+            ? parsed.returnFromProdItems
+            : DEFAULT_RETURN_FROM_PROD_ITEMS
         };
       }
     } catch (e) {
@@ -293,7 +298,8 @@ export default function App() {
       purchaseOrders: DEFAULT_PURCHASE_ORDERS,
       cashBankAccounts: DEFAULT_CASH_BANK_ACCOUNTS,
       cashBankReceipts: DEFAULT_CASH_BANK_RECEIPTS,
-      cashBankPayments: DEFAULT_CASH_BANK_PAYMENTS
+      cashBankPayments: DEFAULT_CASH_BANK_PAYMENTS,
+      returnFromProdItems: DEFAULT_RETURN_FROM_PROD_ITEMS
     };
   });
 
@@ -415,7 +421,8 @@ export default function App() {
           departments: Array.isArray(sData.departments) && sData.departments.length > 0 ? sData.departments : prev.departments,
           coa: Array.isArray(sData.coa) && sData.coa.length > 0 ? sData.coa : prev.coa,
           ratesByYear: sData.ratesByYear || prev.ratesByYear,
-          companySettings: sData.companySettings || prev.companySettings
+          companySettings: sData.companySettings || prev.companySettings,
+          returnFromProdItems: Array.isArray(sData.returnFromProdItems) ? sData.returnFromProdItems : (prev.returnFromProdItems || DEFAULT_RETURN_FROM_PROD_ITEMS)
         }));
 
         if (Array.isArray(resp.auditLogs) && resp.auditLogs.length > 0) {
@@ -1301,6 +1308,200 @@ export default function App() {
     });
 
     showToast(`Berhasil mengimpor ${newItems.length} item inventory!`, 'success');
+  };
+
+  // ===================== RETURN FROM PRODUCTION HANDLERS =====================
+  const handleAddReturnFromProd = (item: Omit<ReturnFromProdItem, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newItem: ReturnFromProdItem = {
+      ...item,
+      id: `ret_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    updateAndSyncState(prev => ({
+      ...prev,
+      returnFromProdItems: [newItem, ...(prev.returnFromProdItems || [])]
+    }), {
+      action: 'CREATE',
+      module: 'Inventory',
+      details: `Membuat dokumen pengembalian dari produksi ${newItem.returnNo} (${newItem.itemName} - ${newItem.qty} ${newItem.uom} dari Dept ${newItem.deptCode})`,
+      itemCode: newItem.itemCode,
+      itemName: newItem.itemName,
+      deptCode: newItem.deptCode,
+      newValue: newItem
+    });
+
+    showToast(`Dokumen pengembalian ${newItem.returnNo} berhasil dicatat!`, 'success');
+  };
+
+  const handleUpdateReturnFromProd = (id: string, updates: Partial<ReturnFromProdItem>) => {
+    const existing = (appState.returnFromProdItems || []).find(r => r.id === id);
+    if (!existing) return;
+
+    const merged: ReturnFromProdItem = {
+      ...existing,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+
+    updateAndSyncState(prev => ({
+      ...prev,
+      returnFromProdItems: (prev.returnFromProdItems || []).map(r => r.id === id ? merged : r)
+    }), {
+      action: 'UPDATE',
+      module: 'Inventory',
+      details: `Mengubah dokumen pengembalian produksi ${merged.returnNo}`,
+      itemCode: merged.itemCode,
+      itemName: merged.itemName,
+      deptCode: merged.deptCode,
+      oldValue: existing,
+      newValue: merged
+    });
+
+    showToast(`Dokumen ${merged.returnNo} berhasil diperbarui!`, 'success');
+  };
+
+  const handleDeleteReturnFromProd = (id: string) => {
+    const existing = (appState.returnFromProdItems || []).find(r => r.id === id);
+    if (!existing) return;
+
+    updateAndSyncState(prev => ({
+      ...prev,
+      returnFromProdItems: (prev.returnFromProdItems || []).filter(r => r.id !== id)
+    }), {
+      action: 'DELETE',
+      module: 'Inventory',
+      details: `Menghapus dokumen pengembalian produksi ${existing.returnNo} (${existing.itemName})`,
+      itemCode: existing.itemCode,
+      itemName: existing.itemName,
+      deptCode: existing.deptCode,
+      oldValue: existing
+    });
+
+    showToast(`Dokumen pengembalian ${existing.returnNo} dihapus.`, 'info');
+  };
+
+  const handleCheckReturnFromProd = (id: string) => {
+    const existing = (appState.returnFromProdItems || []).find(r => r.id === id);
+    if (!existing) return;
+
+    const checkedByName = currentUser?.name || 'Checker';
+    const checkedAt = new Date().toISOString();
+
+    const merged: ReturnFromProdItem = {
+      ...existing,
+      status: 'checked',
+      checkedBy: checkedByName,
+      checkedAt,
+      updatedAt: checkedAt
+    };
+
+    updateAndSyncState(prev => ({
+      ...prev,
+      returnFromProdItems: (prev.returnFromProdItems || []).map(r => r.id === id ? merged : r)
+    }), {
+      action: 'UPDATE',
+      module: 'Inventory',
+      details: `Pemeriksaan (CHECK) fisik diverifikasi oleh ${checkedByName} untuk dokumen ${existing.returnNo} (${existing.qty} ${existing.uom} ${existing.itemName})`,
+      itemCode: existing.itemCode,
+      itemName: existing.itemName,
+      deptCode: existing.deptCode,
+      newValue: merged
+    });
+
+    showToast(`Dokumen ${existing.returnNo} berhasil diperiksa (CHECKED) oleh ${checkedByName}!`, 'success');
+  };
+
+  const handleApproveReturnFromProd = (id: string) => {
+    const existing = (appState.returnFromProdItems || []).find(r => r.id === id);
+    if (!existing) return;
+
+    const approvedByName = currentUser?.name || 'Approver';
+    const approvedAt = new Date().toISOString();
+
+    const merged: ReturnFromProdItem = {
+      ...existing,
+      status: 'approved',
+      approvedBy: approvedByName,
+      approvedAt,
+      updatedAt: approvedAt
+    };
+
+    updateAndSyncState(prev => {
+      let updatedInv = prev.inventoryItems || [];
+      if (existing.condition === 'good') {
+        const invIndex = updatedInv.findIndex(i => i.itemCode === existing.itemCode);
+        if (invIndex >= 0) {
+          const invItem = updatedInv[invIndex];
+          const newIn = Number(invItem.inQty || 0) + Number(existing.qty);
+          const newEnding = Number(invItem.endingQty || 0) + Number(existing.qty);
+          const costUSD = Number(invItem.unitCostUSD || invItem.unitCost || 0);
+          const totalValUSD = newEnding * costUSD;
+          const currentYear = new Date().getFullYear().toString();
+          const rateIDR = prev.ratesByYear?.[currentYear]?.IDR || 16273.56;
+          const totalValIDR = totalValUSD * rateIDR;
+
+          updatedInv = [...updatedInv];
+          updatedInv[invIndex] = {
+            ...invItem,
+            inQty: newIn,
+            endingQty: newEnding,
+            totalValueUSD: totalValUSD,
+            totalValueIDR: totalValIDR,
+            updatedAt: approvedAt
+          };
+        }
+      }
+
+      return {
+        ...prev,
+        returnFromProdItems: (prev.returnFromProdItems || []).map(r => r.id === id ? merged : r),
+        inventoryItems: updatedInv
+      };
+    }, {
+      action: 'APPROVE',
+      module: 'Inventory',
+      details: `Persetujuan (APPROVE) pengembalian barang produksi ${existing.returnNo} oleh ${approvedByName}. Stok ${existing.itemName} bertambah ${existing.qty} ${existing.uom} di gudang.`,
+      itemCode: existing.itemCode,
+      itemName: existing.itemName,
+      deptCode: existing.deptCode,
+      newValue: merged
+    });
+
+    showToast(`Dokumen ${existing.returnNo} berhasil DISETUJUI (APPROVED) oleh ${approvedByName}!`, 'success');
+  };
+
+  const handleRejectReturnFromProd = (id: string, reason: string) => {
+    const existing = (appState.returnFromProdItems || []).find(r => r.id === id);
+    if (!existing) return;
+
+    const rejectedByName = currentUser?.name || 'Rejector';
+    const rejectedAt = new Date().toISOString();
+
+    const merged: ReturnFromProdItem = {
+      ...existing,
+      status: 'rejected',
+      rejectedBy: rejectedByName,
+      rejectedAt,
+      rejectionReason: reason,
+      updatedAt: rejectedAt
+    };
+
+    updateAndSyncState(prev => ({
+      ...prev,
+      returnFromProdItems: (prev.returnFromProdItems || []).map(r => r.id === id ? merged : r)
+    }), {
+      action: 'REJECT',
+      module: 'Inventory',
+      details: `Penolakan (REJECT) dokumen retur ${existing.returnNo} oleh ${rejectedByName}. Alasan: ${reason}`,
+      itemCode: existing.itemCode,
+      itemName: existing.itemName,
+      deptCode: existing.deptCode,
+      newValue: merged
+    });
+
+    showToast(`Dokumen ${existing.returnNo} DITOLAK (REJECTED). Alasan telah dicatat.`, 'info');
   };
 
   // ===================== AUTHENTICATION & LOGIN HANDLERS =====================
@@ -2413,6 +2614,7 @@ export default function App() {
     if (tab === 'inventory-mold-sparepart' || tab.startsWith('mold-')) return 'mold_sparepart';
     if (tab === 'inventory-wip') return 'wip';
     if (tab === 'inventory-finish-good') return 'finish_good';
+    if (tab === 'inventory-return-from-prod') return 'return_from_prod';
     return 'raw_material';
   };
 
@@ -2421,6 +2623,7 @@ export default function App() {
     else if (cat === 'mold_sparepart') setActiveTab('inventory-mold-sparepart');
     else if (cat === 'wip') setActiveTab('inventory-wip');
     else if (cat === 'finish_good') setActiveTab('inventory-finish-good');
+    else if (cat === 'return_from_prod') setActiveTab('inventory-return-from-prod');
   };
 
   return (
@@ -2643,6 +2846,14 @@ export default function App() {
                 activeSubCategory={getInventoryCategoryFromTab(activeTab)}
                 activeGroupId={activeTab.startsWith('mold-') ? (activeTab === 'mold-oil' ? 'OIL_' : activeTab.replace('mold-', '').toUpperCase()) : undefined}
                 onSubCategoryChange={handleInventoryCategoryChange}
+                returnFromProdItems={appState.returnFromProdItems || DEFAULT_RETURN_FROM_PROD_ITEMS}
+                departments={appState.departments || DEFAULT_DEPARTMENTS}
+                onAddReturnFromProd={handleAddReturnFromProd}
+                onUpdateReturnFromProd={handleUpdateReturnFromProd}
+                onDeleteReturnFromProd={handleDeleteReturnFromProd}
+                onCheckReturnFromProd={handleCheckReturnFromProd}
+                onApproveReturnFromProd={handleApproveReturnFromProd}
+                onRejectReturnFromProd={handleRejectReturnFromProd}
               />
             )}
 

@@ -17,10 +17,11 @@ import {
   Search,
   CheckCircle2,
   XCircle,
-  Building2
+  Building2,
+  CheckSquare
 } from 'lucide-react';
-import { AppPermission, AppUser, Department, UserRole } from '../types';
-import { ALL_PERMISSIONS, ROLE_PRESETS, generateStrongPassword } from '../utils/userUtils';
+import { AppPermission, AppUser, Department, UserActionPermission, UserRole } from '../types';
+import { ALL_PERMISSIONS, ALL_ACTION_PERMISSIONS, ROLE_PRESETS, generateStrongPassword } from '../utils/userUtils';
 
 interface UserManagementViewProps {
   users: AppUser[];
@@ -54,6 +55,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   const [role, setRole] = useState<UserRole>('dept_user');
   const [deptCode, setDeptCode] = useState<string>('');
   const [permissions, setPermissions] = useState<AppPermission[]>(ROLE_PRESETS.dept_user.permissions);
+  const [actionPermissions, setActionPermissions] = useState<UserActionPermission[]>(ROLE_PRESETS.dept_user.actionPermissions || ['check']);
   const [isActive, setIsActive] = useState<boolean>(true);
   const [copiedPass, setCopiedPass] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -82,6 +84,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setRole('dept_user');
     setDeptCode(departments[0]?.code || 'ACC');
     setPermissions(ROLE_PRESETS.dept_user.permissions);
+    setActionPermissions(ROLE_PRESETS.dept_user.actionPermissions || ['check']);
     setIsActive(true);
     setErrorMsg('');
     setIsModalOpen(true);
@@ -96,6 +99,13 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setRole(u.role);
     setDeptCode(u.deptCode || '');
     setPermissions(u.permissions);
+    setActionPermissions(
+      u.actionPermissions && u.actionPermissions.length > 0
+        ? u.actionPermissions
+        : u.role === 'admin' || u.role === 'finance'
+        ? ['check', 'approve', 'reject']
+        : ['check']
+    );
     setIsActive(u.isActive);
     setErrorMsg('');
     setIsModalOpen(true);
@@ -105,6 +115,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setRole(newRole);
     if (newRole !== 'custom') {
       setPermissions(ROLE_PRESETS[newRole].permissions);
+      setActionPermissions(ROLE_PRESETS[newRole].actionPermissions || ['check']);
     }
   };
 
@@ -112,6 +123,12 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setRole('custom');
     setPermissions(prev =>
       prev.includes(permId) ? prev.filter(p => p !== permId) : [...prev, permId]
+    );
+  };
+
+  const handleToggleActionPermission = (actId: UserActionPermission) => {
+    setActionPermissions(prev =>
+      prev.includes(actId) ? prev.filter(a => a !== actId) : [...prev, actId]
     );
   };
 
@@ -144,6 +161,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
       role,
       roleLabel: ROLE_PRESETS[role]?.label || 'Kustom',
       permissions: permissions.length > 0 ? permissions : ['dashboard'],
+      actionPermissions: actionPermissions,
       deptCode: deptCode || undefined,
       isActive,
       createdAt: editingUser ? editingUser.createdAt : new Date().toISOString()
@@ -243,6 +261,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                 <th className="p-3.5">Email</th>
                 <th className="p-3.5">Hak Akses (Role)</th>
                 <th className="p-3.5">Dept</th>
+                <th className="p-3.5">Hak Otorisasi (Aksi)</th>
                 <th className="p-3.5">Jumlah Menu Diizinkan</th>
                 <th className="p-3.5 text-center">Status</th>
                 <th className="p-3.5 text-center">Aksi</th>
@@ -251,7 +270,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
             <tbody className="divide-y divide-slate-100 text-xs">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400 italic">
+                  <td colSpan={8} className="p-8 text-center text-slate-400 italic">
                     Tidak ada pengguna yang sesuai dengan filter pencarian.
                   </td>
                 </tr>
@@ -304,6 +323,33 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
                       {/* Dept */}
                       <td className="p-3.5 font-bold text-indigo-700">{u.deptCode || '-'}</td>
+
+                      {/* Action Permissions (Check, Approve, Reject) */}
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {u.role === 'admin' || (u.actionPermissions && u.actionPermissions.includes('check')) ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200" title="Hak Memeriksa Dokumen/Barang">
+                              <CheckSquare className="w-2.5 h-2.5 text-blue-600" />
+                              <span>Check</span>
+                            </span>
+                          ) : null}
+                          {u.role === 'admin' || (u.actionPermissions && u.actionPermissions.includes('approve')) ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200" title="Hak Menyetujui Otorisasi Dokumen/Barang">
+                              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                              <span>Approve</span>
+                            </span>
+                          ) : null}
+                          {u.role === 'admin' || (u.actionPermissions && u.actionPermissions.includes('reject')) ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200" title="Hak Menolak Dokumen/Barang">
+                              <XCircle className="w-2.5 h-2.5 text-rose-600" />
+                              <span>Reject</span>
+                            </span>
+                          ) : null}
+                          {u.role !== 'admin' && (!u.actionPermissions || u.actionPermissions.length === 0) && (
+                            <span className="text-[11px] text-slate-400 italic">Hanya Lihat</span>
+                          )}
+                        </div>
+                      </td>
 
                       {/* Permissions Count */}
                       <td className="p-3.5">
@@ -554,6 +600,74 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              {/* Detail Hak Otorisasi Aksi (Check, Approve, Reject) */}
+              <div className="pt-2 border-t border-slate-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                      <span>Hak Akses Otorisasi Dokumen &amp; Workflow (Check, Approve, Reject)</span>
+                    </label>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Mengatur wewenang user untuk memeriksa, menyetujui, atau menolak dokumen (PR, PO, Return from Prod, dsb.)
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActionPermissions(['check', 'approve', 'reject'])}
+                      className="text-[11px] text-indigo-600 hover:underline cursor-pointer"
+                    >
+                      Pilih Semua
+                    </button>
+                    <span className="text-slate-300">•</span>
+                    <button
+                      type="button"
+                      onClick={() => setActionPermissions(['check'])}
+                      className="text-[11px] text-slate-500 hover:underline cursor-pointer"
+                    >
+                      Hanya Check
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {ALL_ACTION_PERMISSIONS.map(act => {
+                    const isChecked = actionPermissions.includes(act.id);
+                    return (
+                      <label
+                        key={act.id}
+                        className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${
+                          isChecked
+                            ? `${act.badgeBg} ${act.badgeBorder} shadow-xs ring-1 ring-offset-0 ${act.badgeBorder}`
+                            : 'bg-slate-50/70 border-slate-200 hover:bg-slate-100/70'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleActionPermission(act.id)}
+                          className="mt-1 rounded text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-1.5">
+                            {act.id === 'check' && <CheckSquare className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
+                            {act.id === 'approve' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                            {act.id === 'reject' && <XCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />}
+                            <span className={`font-bold text-xs ${isChecked ? act.badgeText : 'text-slate-700'}`}>
+                              {act.label}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 leading-snug mt-1">
+                            {act.description}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 
