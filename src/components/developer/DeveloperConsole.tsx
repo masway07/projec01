@@ -29,7 +29,9 @@ import {
   ArrowRightLeft,
   CornerDownRight,
   ArrowUpFromLine,
-  GitCommit
+  GitCommit,
+  ChevronRight,
+  ListPlus
 } from 'lucide-react';
 import { AppUser, CompanySettings } from '../../types';
 import { WorkflowBuilder } from './WorkflowBuilder';
@@ -101,7 +103,31 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
         ]},
         { id: 'inventory', label: 'Inventory', icon: 'Boxes', subItems: [
           { id: 'inventory-raw-material', label: 'Raw Material', category: 'raw_material' },
-          { id: 'inventory-mold-sparepart', label: 'Mold & Spare Part', category: 'mold_sparepart' },
+          {
+            id: 'inventory-mold-sparepart',
+            label: 'Mold & Spare Part',
+            category: 'mold_sparepart',
+            subItems: [
+              { id: 'mold-2rcf', label: 'CF Dies 2R (CF2R)', category: '2RCF' },
+              { id: 'mold-4rcf', label: 'CF Dies 4R (CFD4R)', category: '4RCF' },
+              { id: 'mold-2rmc', label: 'CF Machine 2R (CFM2R)', category: '2RMC' },
+              { id: 'mold-2rtl', label: 'Tools 2R', category: '2RTL' },
+              { id: 'mold-4rtl', label: 'Tools 4R', category: '4RTL' },
+              { id: 'mold-mtel', label: 'Electric', category: 'MTEL' },
+              { id: 'mold-2rsp', label: '2R Spare Cons (2Rcon)', category: '2RSP' },
+              { id: 'mold-2rhp', label: '2R Holder Part (2RHP)', category: '2RHP' },
+              { id: 'mold-4rsp', label: '4R Spare Cons (4Rcon)', category: '4RSP' },
+              { id: 'mold-4rhl', label: '4R Holder List (4RHL)', category: '4RHL' },
+              { id: 'mold-4rhp', label: '4R Holder Part (4RHP)', category: '4RHP' },
+              { id: 'mold-4rbs', label: 'Bush1', category: '4RBS' },
+              { id: 'mold-mtmc', label: 'Mekanik (Mech)', category: 'MTMC' },
+              { id: 'mold-mtbo', label: 'Belt & Oring', category: 'MTBO' },
+              { id: 'mold-prdw', label: 'Dowa', category: 'PRDW' },
+              { id: 'mold-prfr', label: 'Frame', category: 'PRFR' },
+              { id: 'mold-prsh', label: 'Shot Blast', category: 'PRSH' },
+              { id: 'mold-oil', label: 'Oil', category: 'OIL_' },
+            ]
+          },
           { id: 'inventory-wip', label: 'Work In Process', category: 'wip' },
           { id: 'inventory-finish-good', label: 'Finish Good', category: 'finish_good' },
           { id: 'inventory-return-from-prod', label: 'Return from Prod', category: 'return_from_prod' },
@@ -180,7 +206,28 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
     }
   );
 
+  // Form Builder state per menu ID
+  const [formSchemas, setFormSchemas] = useState<Record<string, any[]>>(() => {
+    try {
+      const saved = localStorage.getItem('erp_custom_forms');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      'budget': [
+        { key: 'dept_code', label: 'Kode Departemen', type: 'text', required: true },
+        { key: 'budget_name', label: 'Nama Item Budget', type: 'text', required: true },
+        { key: 'amount', label: 'Nilai Anggaran (IDR)', type: 'number', required: true }
+      ],
+      'itemStock': [
+        { key: 'sku', label: 'Kode SKU', type: 'text', required: true },
+        { key: 'name', label: 'Nama Barang', type: 'text', required: true },
+        { key: 'category', label: 'Kategori Material', type: 'select', required: false, options: ['Raw Material', 'Sparepart', 'WIP', 'Finish Good'] }
+      ]
+    };
+  });
+
   const [selectedMenuId, setSelectedMenuId] = useState<string>('budget');
+  const [selectedFormMenuId, setSelectedFormMenuId] = useState<string>('budget');
   const [selectedDataSourceKey, setSelectedDataSourceKey] = useState<string>('itemStocks');
 
   // Inline Menu Editing State
@@ -189,6 +236,9 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
 
   const [editingSubKey, setEditingSubKey] = useState<string | null>(null);
   const [editSubLabelVal, setEditSubLabelVal] = useState<string>('');
+
+  const [editingNestedKey, setEditingNestedKey] = useState<string | null>(null);
+  const [editNestedLabelVal, setEditNestedLabelVal] = useState<string>('');
 
   // Layout customization state for selectedMenuId
   const currentViewConfig = views[selectedMenuId] || {
@@ -221,6 +271,12 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
   const [editColTypeVal, setEditColTypeVal] = useState<string>('text');
   const [editColModuleVal, setEditColModuleVal] = useState<string>('itemStocks');
 
+  // Form Builder Field Creator state
+  const [newFormFieldLabel, setNewFormFieldLabel] = useState<string>('');
+  const [newFormFieldKey, setNewFormFieldKey] = useState<string>('');
+  const [newFormFieldType, setNewFormFieldType] = useState<string>('text');
+  const [newFormFieldRequired, setNewFormFieldRequired] = useState<boolean>(false);
+
   // Modal / Add Menu State
   const [showAddMenuModal, setShowAddMenuModal] = useState<boolean>(false);
   const [newMenuGroup, setNewMenuGroup] = useState<string>('Workspace');
@@ -242,7 +298,31 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
   const handleSaveAll = () => {
     onSaveCustomMenus(menus);
     onSaveCustomViews(views);
-    showNotification('Seluruh struktur menu, pengaturan kolom, modul relasi, dan layout berhasil disimpan permanen selamanya!');
+    try {
+      localStorage.setItem('erp_custom_forms', JSON.stringify(formSchemas));
+    } catch (e) {}
+    showNotification('Seluruh hirarki menu (termasuk sub-submenu), layout, kolom, & form schema berhasil disimpan permanen!');
+  };
+
+  // Extract flat list of ALL parent targets for dropdown selectors
+  const getAllParentTargets = () => {
+    const list: { id: string; label: string; level: number }[] = [];
+    menus.forEach(groupObj => {
+      (groupObj.items || []).forEach((item: any) => {
+        list.push({ id: item.id, label: `[Menu Utama] ${item.label}`, level: 0 });
+        if (item.subItems) {
+          item.subItems.forEach((sub: any) => {
+            list.push({ id: sub.id, label: `  └── [Submenu] ${item.label} > ${sub.label}`, level: 1 });
+            if (sub.subItems) {
+              sub.subItems.forEach((nested: any) => {
+                list.push({ id: nested.id, label: `      └── [Sub-Submenu] ${sub.label} > ${nested.label}`, level: 2 });
+              });
+            }
+          });
+        }
+      });
+    });
+    return list;
   };
 
   const handleSelectMenuForLayout = (id: string, label: string) => {
@@ -320,6 +400,45 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
     showNotification('Kolom berhasil diperbarui!');
   };
 
+  // Form Builder Field Handlers
+  const currentFormFields = formSchemas[selectedFormMenuId] || [];
+
+  const handleAddFormField = () => {
+    if (!newFormFieldLabel.trim()) return;
+    const key = newFormFieldKey.trim() || newFormFieldLabel.toLowerCase().replace(/\s+/g, '_');
+    const newField = {
+      key,
+      label: newFormFieldLabel,
+      type: newFormFieldType,
+      required: newFormFieldRequired
+    };
+    const updated = {
+      ...formSchemas,
+      [selectedFormMenuId]: [...currentFormFields, newField]
+    };
+    setFormSchemas(updated);
+    try {
+      localStorage.setItem('erp_custom_forms', JSON.stringify(updated));
+    } catch (e) {}
+    setNewFormFieldLabel('');
+    setNewFormFieldKey('');
+    showNotification(`Field form "${newFormFieldLabel}" berhasil ditambahkan untuk menu ID "${selectedFormMenuId}"!`);
+  };
+
+  const handleDeleteFormField = (fIndex: number) => {
+    const updatedFields = [...currentFormFields];
+    updatedFields.splice(fIndex, 1);
+    const updated = {
+      ...formSchemas,
+      [selectedFormMenuId]: updatedFields
+    };
+    setFormSchemas(updated);
+    try {
+      localStorage.setItem('erp_custom_forms', JSON.stringify(updated));
+    } catch (e) {}
+    showNotification('Field form berhasil dihapus.');
+  };
+
   const handleSaveItemLabel = (gIdx: number, iIdx: number) => {
     const updated = [...menus];
     updated[gIdx].items[iIdx].label = editItemLabelVal;
@@ -338,6 +457,15 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
     showNotification(`Nama submenu berhasil diubah menjadi "${editSubLabelVal}"!`);
   };
 
+  const handleSaveNestedLabel = (gIdx: number, iIdx: number, sIdx: number, nIdx: number) => {
+    const updated = [...menus];
+    updated[gIdx].items[iIdx].subItems[sIdx].subItems[nIdx].label = editNestedLabelVal;
+    setMenus(updated);
+    onSaveCustomMenus(updated);
+    setEditingNestedKey(null);
+    showNotification(`Nama sub-submenu berhasil diubah menjadi "${editNestedLabelVal}"!`);
+  };
+
   const handleConvertToSubmenu = (sourceGIdx: number, sourceIIdx: number, targetParentMenuId: string) => {
     const updated = [...menus];
     const sourceItem = updated[sourceGIdx].items[sourceIIdx];
@@ -347,22 +475,35 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
       for (const it of g.items) {
         if (it.id === targetParentMenuId) {
           if (!it.subItems) it.subItems = [];
-          it.subItems.push({ id: sourceItem.id, label: sourceItem.label, category: sourceItem.id });
+          it.subItems.push({ id: sourceItem.id, label: sourceItem.label, category: sourceItem.id, subItems: sourceItem.subItems || [] });
           found = true;
           break;
         }
+        if (it.subItems) {
+          for (const sub of it.subItems) {
+            if (sub.id === targetParentMenuId) {
+              if (!sub.subItems) sub.subItems = [];
+              sub.subItems.push({ id: sourceItem.id, label: sourceItem.label, category: sourceItem.id });
+              found = true;
+              break;
+            }
+          }
+        }
+        if (found) break;
       }
       if (found) break;
     }
     setMenus(updated);
     onSaveCustomMenus(updated);
-    showNotification(`Menu "${sourceItem.label}" berhasil diubah menjadi Submenu dan disimpan permanen!`);
+    showNotification(`Menu "${sourceItem.label}" berhasil dipindahkan menjadi Submenu dan disimpan!`);
   };
 
   const handleChangeSubmenuParent = (subId: string, newParentId: string) => {
     if (!newParentId) return;
     const updated = [...menus];
     let extractedSub: any = null;
+
+    // Search and extract from Level 1 or Level 2
     for (const g of updated) {
       for (const it of g.items) {
         if (it.subItems) {
@@ -371,11 +512,24 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
             extractedSub = it.subItems.splice(sIdx, 1)[0];
             break;
           }
+          for (const sub of it.subItems) {
+            if (sub.subItems) {
+              const nIdx = sub.subItems.findIndex((n: any) => n.id === subId);
+              if (nIdx !== -1) {
+                extractedSub = sub.subItems.splice(nIdx, 1)[0];
+                break;
+              }
+            }
+          }
         }
+        if (extractedSub) break;
       }
       if (extractedSub) break;
     }
+
     if (!extractedSub) return;
+
+    // Insert into target parent (Main Menu or Level 1 Submenu)
     let inserted = false;
     for (const g of updated) {
       for (const it of g.items) {
@@ -385,9 +539,21 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
           inserted = true;
           break;
         }
+        if (it.subItems) {
+          for (const sub of it.subItems) {
+            if (sub.id === newParentId) {
+              if (!sub.subItems) sub.subItems = [];
+              sub.subItems.push(extractedSub);
+              inserted = true;
+              break;
+            }
+          }
+        }
+        if (inserted) break;
       }
       if (inserted) break;
     }
+
     if (inserted) {
       setMenus(updated);
       onSaveCustomMenus(updated);
@@ -403,7 +569,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
       id: subItem.id,
       label: subItem.label,
       icon: 'Layers',
-      subItems: []
+      subItems: subItem.subItems || []
     });
     setMenus(updated);
     onSaveCustomMenus(updated);
@@ -431,6 +597,17 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
             added = true;
             break;
           }
+          if (it.subItems) {
+            for (const sub of it.subItems) {
+              if (sub.id === newMenuParentId) {
+                if (!sub.subItems) sub.subItems = [];
+                sub.subItems.push(newEntry);
+                added = true;
+                break;
+              }
+            }
+          }
+          if (added) break;
         }
         if (added) break;
       }
@@ -473,6 +650,14 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
     showNotification('Submenu berhasil dihapus.');
   };
 
+  const handleDeleteNestedSubItem = (gIdx: number, iIdx: number, sIdx: number, nIdx: number) => {
+    const updated = [...menus];
+    updated[gIdx].items[iIdx].subItems[sIdx].subItems.splice(nIdx, 1);
+    setMenus(updated);
+    onSaveCustomMenus(updated);
+    showNotification('Sub-submenu berhasil dihapus.');
+  };
+
   const handleMoveMenu = (groupIndex: number, itemIndex: number, direction: 'up' | 'down') => {
     const updated = [...menus];
     const items = updated[groupIndex].items;
@@ -511,6 +696,8 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
     showNotification('Record sumber data berhasil dihapus.');
   };
 
+  const parentOptionsList = getAllParentTargets();
+
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header Banner */}
@@ -529,10 +716,10 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 text-white">
-              Pusat Kontrol & Kustomisasi Kolom Tabel & Modul
+              Pusat Kontrol & Kustomisasi Hirarki Menu & Submenu Multi-Level
             </h1>
             <p className="text-slate-300 text-sm mt-1 max-w-2xl">
-              Tambah, edit, dan hapus nama kolom, key data, serta modul sumber link untuk setiap menu dan submenu secara permanen.
+              Atur menu utama, submenu, dan sub-submenu (submenu dari submenu) beserta kolom tabel, modul sumber link, & form builder secara permanen.
             </p>
           </div>
         </div>
@@ -555,7 +742,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
       {/* Sub Tabs Navigation */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200">
         {[
-          { id: 'menus', label: '1. Kelola Hirarki Menu & Submenu', icon: ListTree },
+          { id: 'menus', label: '1. Kelola Hirarki Menu & Sub-Submenu', icon: ListTree },
           { id: 'layouts', label: '2. Pengaturan Kolom & Layout UI', icon: LayoutGrid },
           { id: 'forms', label: '3. Form & Input Builder', icon: FileCode },
           { id: 'datasource', label: '4. Integrasi & CRUD Data Source', icon: Database },
@@ -581,14 +768,14 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
         })}
       </div>
 
-      {/* Tab 1: Kelola Menu & Submenu */}
+      {/* Tab 1: Kelola Menu & Sub-Submenu */}
       {activeSubTab === 'menus' && (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Manajemen Pembuatan Menu & Perubahan Induk Submenu</h2>
+              <h2 className="text-lg font-bold text-slate-900">Manajemen Pembuatan Menu & Perubahan Induk Submenu (Hingga Sub-Submenu)</h2>
               <p className="text-sm text-slate-500 mt-0.5">
-                Buat menu baru langsung sebagai submenu di menu tertentu, ubah induk submenu, atau pindahkan menu antar level secara permanen.
+                Buat menu baru langsung sebagai submenu dari submenu (sub-submenu), ubah induk submenu, atau pindahkan hirarki menu antar level.
               </p>
             </div>
             <button
@@ -618,6 +805,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                     const isEditingThis = editingItemKey === itemKey;
                     return (
                       <div key={item.id || iIdx} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition space-y-3">
+                        {/* Main Menu Item */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3 flex-1">
                             <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow shrink-0">
@@ -671,21 +859,22 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                             defaultValue=""
                             className="px-2 py-1 bg-white border border-indigo-200 rounded text-xs font-semibold text-indigo-700 outline-none cursor-pointer"
                           >
-                            <option value="" disabled>Pilih Menu Induk Baru...</option>
-                            {menus.flatMap(mg => mg.items).filter(it => it.id !== item.id).map(it => (
-                              <option key={it.id} value={it.id}>{it.label}</option>
+                            <option value="" disabled>Pilih Menu Target...</option>
+                            {parentOptionsList.filter(p => p.id !== item.id).map(p => (
+                              <option key={p.id} value={p.id}>{p.label}</option>
                             ))}
                           </select>
                         </div>
 
-                        {/* Subitems list */}
+                        {/* Subitems (Level 1) list */}
                         {item.subItems && item.subItems.length > 0 && (
                           <div className="pl-4 pt-2 space-y-2 border-t border-slate-200/80 mt-2">
                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Submenu ({item.subItems.length}):</div>
-                            <div className="space-y-1.5">
+                            <div className="space-y-2">
                               {item.subItems.map((sub: any, sIdx: number) => {
                                 const subKey = `${gIdx}-${iIdx}-${sIdx}`;
                                 const isEditingSub = editingSubKey === subKey;
+                                const hasNestedSub = sub.subItems && sub.subItems.length > 0;
                                 return (
                                   <div key={sub.id || sIdx} className="bg-white border border-slate-200 p-3 rounded-xl shadow-sm space-y-2">
                                     <div className="flex items-center justify-between gap-2">
@@ -699,7 +888,12 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                                           </div>
                                         ) : (
                                           <div className="flex items-center gap-2">
-                                            <span className="text-xs text-slate-800 font-semibold">{sub.label}</span>
+                                            <span className="text-xs text-slate-800 font-bold">{sub.label}</span>
+                                            {hasNestedSub && (
+                                              <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 rounded text-[9px] font-bold">
+                                                {sub.subItems.length} Sub-Submenu
+                                              </span>
+                                            )}
                                             <button onClick={() => { setEditingSubKey(subKey); setEditSubLabelVal(sub.label); }} className="text-indigo-600 hover:text-indigo-800 cursor-pointer" title="Edit Nama Submenu"><Edit2 className="w-3 h-3" /></button>
                                           </div>
                                         )}
@@ -710,13 +904,13 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                                           className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-[10px] flex items-center gap-1 cursor-pointer"
                                           title="Jadikan Menu Utama"
                                         >
-                                          <ArrowUpFromLine className="w-3 h-3" /> Jadikan Menu Utama
+                                          <ArrowUpFromLine className="w-3 h-3" /> Promosi
                                         </button>
                                         <button onClick={() => handleDeleteSubItem(gIdx, iIdx, sIdx)} className="p-1 rounded hover:bg-rose-100 text-rose-600 cursor-pointer" title="Hapus Submenu"><Trash2 className="w-3 h-3" /></button>
                                       </div>
                                     </div>
 
-                                    {/* Change Parent of Submenu */}
+                                    {/* Change Parent of Level 1 Submenu */}
                                     <div className="flex items-center justify-between text-[11px] bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg">
                                       <span className="text-slate-600 font-medium flex items-center gap-1">
                                         <GitCommit className="w-3 h-3 text-indigo-600" /> Pindah Induk Ke:
@@ -731,11 +925,46 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                                         }}
                                         className="px-2 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-semibold text-slate-700 outline-none cursor-pointer"
                                       >
-                                        {menus.flatMap(mg => mg.items).map(parentIt => (
+                                        {parentOptionsList.filter(p => p.id !== sub.id).map(parentIt => (
                                           <option key={parentIt.id} value={parentIt.id}>{parentIt.label}</option>
                                         ))}
                                       </select>
                                     </div>
+
+                                    {/* Nested Subitems (Level 2 / Submenu dari Submenu) */}
+                                    {sub.subItems && sub.subItems.length > 0 && (
+                                      <div className="pl-3 pt-2 space-y-1.5 border-t border-slate-100 mt-2">
+                                        <div className="text-[9px] font-bold text-violet-600 uppercase tracking-wider flex items-center gap-1">
+                                          <CornerDownRight className="w-3 h-3" /> Sub-Submenu ({sub.subItems.length}):
+                                        </div>
+                                        <div className="space-y-1">
+                                          {sub.subItems.map((nested: any, nIdx: number) => {
+                                            const nestedKey = `${gIdx}-${iIdx}-${sIdx}-${nIdx}`;
+                                            const isEditingNested = editingNestedKey === nestedKey;
+                                            return (
+                                              <div key={nested.id || nIdx} className="bg-violet-50/50 border border-violet-200/80 px-2.5 py-1.5 rounded-lg flex items-center justify-between text-xs">
+                                                <div className="flex items-center gap-2 flex-1">
+                                                  <span className="w-1 h-1 rounded-full bg-violet-600"></span>
+                                                  {isEditingNested ? (
+                                                    <div className="flex items-center gap-1 w-full">
+                                                      <input type="text" value={editNestedLabelVal} onChange={e => setEditNestedLabelVal(e.target.value)} className="px-2 py-0.5 bg-white border border-violet-500 rounded text-xs font-semibold outline-none w-full" autoFocus />
+                                                      <button onClick={() => handleSaveNestedLabel(gIdx, iIdx, sIdx, nIdx)} className="px-2 py-0.5 bg-violet-600 text-white text-[10px] font-bold rounded cursor-pointer">Simpan</button>
+                                                      <button onClick={() => setEditingNestedKey(null)} className="px-2 py-0.5 bg-slate-200 text-[10px] rounded cursor-pointer">Batal</button>
+                                                    </div>
+                                                  ) : (
+                                                    <div className="flex items-center gap-1.5">
+                                                      <span className="font-semibold text-slate-800">{nested.label}</span>
+                                                      <button onClick={() => { setEditingNestedKey(nestedKey); setEditNestedLabelVal(nested.label); }} className="text-violet-600 hover:text-violet-800 cursor-pointer" title="Edit Nama Sub-Submenu"><Edit2 className="w-3 h-3" /></button>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                                <button onClick={() => handleDeleteNestedSubItem(gIdx, iIdx, sIdx, nIdx)} className="p-1 text-rose-600 hover:bg-rose-100 rounded cursor-pointer" title="Hapus Sub-Submenu"><Trash2 className="w-3 h-3" /></button>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               })}
@@ -752,19 +981,21 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
         </div>
       )}
 
-      {/* Tab 2: Pengaturan Kolom & Layout UI */}
+      {/* Tab 2: Pengaturan Kolom & Layout UI (LENGKAP SAMPAI SUB-SUBMENU) */}
       {activeSubTab === 'layouts' && (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
             <h2 className="text-lg font-bold text-slate-900">Manajemen Kolom Tabel, Key Data, & Modul Sumber Link</h2>
-            <p className="text-sm text-slate-500 mt-0.5">Pilih menu atau submenu, lalu atur kolom tabel secara detail (Tambah, Edit Nama, Edit Key, Tipe Data, dan Modul Sumber Link) agar tersinkronisasi permanen di dashboard.</p>
+            <p className="text-sm text-slate-500 mt-0.5">Pilih menu, submenu, atau sub-submenu (submenu dari submenu), lalu atur kolom tabel secara detail (Tambah, Edit Nama, Edit Key, Tipe Data, dan Modul Sumber Link) agar tersinkronisasi permanen di dashboard.</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: Complete List of All Menus and Submenus */}
+            {/* Left: Complete List of All Menus, Submenus, & Sub-Submenus */}
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
-              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Daftar Menu & Submenu Sistem</h3>
-              <div className="space-y-3 max-h-[580px] overflow-y-auto pr-1">
+              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center justify-between">
+                <span>Daftar Menu & Submenu Sistem</span>
+              </h3>
+              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
                 {menus.map((groupObj, gIdx) => (
                   <div key={groupObj.id || gIdx} className="space-y-1.5">
                     <div className="text-[11px] font-bold text-indigo-600 uppercase px-2">{groupObj.group}</div>
@@ -784,27 +1015,55 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                             <span className="text-[10px] opacity-75 font-mono">{item.id}</span>
                           </button>
 
-                          {/* Submenus under this item */}
+                          {/* Submenus (Level 1) under this item */}
                           {item.subItems && item.subItems.length > 0 && (
-                            <div className="pl-4 space-y-1 pt-1">
+                            <div className="pl-3 space-y-1 pt-0.5">
                               {item.subItems.map((sub: any) => {
                                 const isSubSelected = selectedMenuId === sub.id;
+                                const hasNested = sub.subItems && sub.subItems.length > 0;
                                 return (
-                                  <button
-                                    key={sub.id}
-                                    onClick={() => handleSelectMenuForLayout(sub.id, sub.label)}
-                                    className={`w-full text-left px-3 py-2 rounded-lg font-medium text-xs transition flex items-center justify-between cursor-pointer ${
-                                      isSubSelected
-                                        ? 'bg-violet-600 text-white shadow-sm'
-                                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                                    }`}
-                                  >
-                                    <span className="flex items-center gap-1.5">
-                                      <span className="w-1 h-1 rounded-full bg-current"></span>
-                                      {sub.label}
-                                    </span>
-                                    <span className="text-[9px] opacity-70 font-mono">{sub.id}</span>
-                                  </button>
+                                  <div key={sub.id} className="space-y-1">
+                                    <button
+                                      onClick={() => handleSelectMenuForLayout(sub.id, sub.label)}
+                                      className={`w-full text-left px-3 py-2 rounded-lg font-semibold text-xs transition flex items-center justify-between cursor-pointer ${
+                                        isSubSelected
+                                          ? 'bg-violet-600 text-white shadow-sm'
+                                          : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                                      }`}
+                                    >
+                                      <span className="flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                        {sub.label}
+                                      </span>
+                                      <span className="text-[9px] opacity-70 font-mono">{sub.id}</span>
+                                    </button>
+
+                                    {/* Sub-submenus (Level 2 / Submenu dari Submenu) */}
+                                    {hasNested && (
+                                      <div className="pl-3 space-y-1 border-l-2 border-indigo-200 ml-2">
+                                        {sub.subItems.map((nested: any) => {
+                                          const isNestedSelected = selectedMenuId === nested.id;
+                                          return (
+                                            <button
+                                              key={nested.id}
+                                              onClick={() => handleSelectMenuForLayout(nested.id, nested.label)}
+                                              className={`w-full text-left px-2.5 py-1.5 rounded-md font-medium text-[11px] transition flex items-center justify-between cursor-pointer ${
+                                                isNestedSelected
+                                                  ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                                                  : 'bg-indigo-50/50 text-slate-700 hover:bg-indigo-100/50 border border-indigo-100'
+                                              }`}
+                                            >
+                                              <span className="flex items-center gap-1 truncate">
+                                                <CornerDownRight className="w-3 h-3 text-indigo-500 shrink-0" />
+                                                <span className="truncate">{nested.label}</span>
+                                              </span>
+                                              <span className="text-[9px] opacity-70 font-mono shrink-0 ml-1">{nested.id}</span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
                                 );
                               })}
                             </div>
@@ -875,7 +1134,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                 </select>
               </div>
 
-              {/* Advanced Columns Manager (Add / Edit Label & Key / Linked Module) */}
+              {/* Advanced Columns Manager */}
               <div className="space-y-4 pt-3 border-t border-slate-200">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1011,20 +1270,141 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
         </div>
       )}
 
-      {/* Tab 3: Form Builder */}
+      {/* Tab 3: Form & Input Builder (SUPPORT SELURUH MENU, SUBMENU, & SUB-SUBMENU) */}
       {activeSubTab === 'forms' && (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-900">Form & Input Builder Menu</h2>
-            <p className="text-sm text-slate-500 mt-0.5">Atur komponen formulir dan field input data.</p>
+            <h2 className="text-lg font-bold text-slate-900">Form & Input Builder Menu (Lengkap hingga Sub-Submenu)</h2>
+            <p className="text-sm text-slate-500 mt-0.5">Rancang komponen formulir dan field input data kustom untuk setiap menu, submenu, atau sub-submenu.</p>
           </div>
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
-            {[{ name: 'code', label: 'Kode / SKU', type: 'text' }, { name: 'name', label: 'Nama Item', type: 'text' }].map((f, i) => (
-              <div key={i} className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
-                <div className="font-bold text-sm text-slate-800">{f.label} <span className="text-xs text-slate-400 font-mono">({f.name})</span></div>
-                <span className="text-xs bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-lg font-bold">{f.type}</span>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Target Menu Selector */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Pilih Menu / Sub-Submenu Target</h3>
+              <div className="space-y-1.5 max-h-[500px] overflow-y-auto pr-1">
+                {parentOptionsList.map(opt => {
+                  const isSelected = selectedFormMenuId === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => setSelectedFormMenuId(opt.id)}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-between cursor-pointer ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white shadow'
+                          : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'
+                      }`}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      <span className="text-[9px] font-mono opacity-70 ml-1">{opt.id}</span>
+                    </button>
+                  );
+                })}
               </div>
-            ))}
+            </div>
+
+            {/* Form Builder Workspace */}
+            <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Schema Form Menu: <span className="text-indigo-600 font-mono">{selectedFormMenuId}</span></h3>
+                  <p className="text-xs text-slate-500">Field input berikut akan muncul saat pembuatan data baru pada menu ini.</p>
+                </div>
+                <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-200">
+                  {currentFormFields.length} Field
+                </span>
+              </div>
+
+              {/* Add New Form Field Form */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                <div className="text-xs font-bold text-slate-800">Tambah Field Form Baru:</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                  <input
+                    type="text"
+                    placeholder="Nama Field (Label)"
+                    value={newFormFieldLabel}
+                    onChange={e => setNewFormFieldLabel(e.target.value)}
+                    className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium outline-none"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Key Input (cth: supplier_code)"
+                    value={newFormFieldKey}
+                    onChange={e => setNewFormFieldKey(e.target.value)}
+                    className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono outline-none"
+                  />
+                  <select
+                    value={newFormFieldType}
+                    onChange={e => setNewFormFieldType(e.target.value)}
+                    className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold outline-none cursor-pointer"
+                  >
+                    <option value="text">Teks / Text</option>
+                    <option value="number">Angka / Number</option>
+                    <option value="date">Tanggal / Date</option>
+                    <option value="textarea">Textarea / Catatan</option>
+                    <option value="select">Dropdown Select</option>
+                    <option value="checkbox">Checkbox Toggle</option>
+                  </select>
+                  <button
+                    onClick={handleAddFormField}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold shadow cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Tambah Field
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="reqCheck"
+                    checked={newFormFieldRequired}
+                    onChange={e => setNewFormFieldRequired(e.target.checked)}
+                    className="rounded text-indigo-600 cursor-pointer"
+                  />
+                  <label htmlFor="reqCheck" className="text-xs text-slate-600 cursor-pointer font-medium">Field Wajib Diisi (Required)</label>
+                </div>
+              </div>
+
+              {/* List of Form Fields */}
+              <div className="space-y-3">
+                {currentFormFields.length === 0 ? (
+                  <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs">
+                    Belum ada field input form kustom untuk menu ini. Tambahkan field baru di atas.
+                  </div>
+                ) : (
+                  currentFormFields.map((field: any, fIdx: number) => (
+                    <div key={field.key || fIdx} className="p-4 rounded-xl border border-slate-200 bg-white hover:border-indigo-200 transition flex items-center justify-between gap-3 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                          {fIdx + 1}
+                        </div>
+                        <div>
+                          <div className="font-bold text-sm text-slate-800 flex items-center gap-2">
+                            <span>{field.label}</span>
+                            {field.required && (
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-bold">Wajib</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-400 font-mono">key: {field.key}</div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold uppercase font-mono">
+                          {field.type}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteFormField(fIdx)}
+                          className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 cursor-pointer transition"
+                          title="Hapus Field"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1133,7 +1513,7 @@ export const DeveloperConsole: React.FC<DeveloperConsoleProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1">Jadikan Sebagai Submenu Dari (Opsional)</label>
                 <select value={newMenuParentId} onChange={e => setNewMenuParentId(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none bg-white font-medium">
                   <option value="">(Buat sebagai Menu Utama baru)</option>
-                  {menus.flatMap(mg => mg.items).map(parentIt => (
+                  {parentOptionsList.map(parentIt => (
                     <option key={parentIt.id} value={parentIt.id}>Submenu di bawah: {parentIt.label}</option>
                   ))}
                 </select>
