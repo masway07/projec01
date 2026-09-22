@@ -453,6 +453,7 @@ export interface PurchaseInvoiceLine {
 export interface PurchaseInvoice {
   id: string;
   invoiceNo: string; // Nomor Tagihan / Faktur dari Supplier (e.g. INV-SUP/2026/03/001)
+  invoiceNumber?: string; // Optional alias for invoiceNo
   taxInvoiceNo?: string; // No Seri Faktur Pajak PPN (e.g. 010.002-26.88219401)
   invoiceDate: string; // YYYY-MM-DD
   dueDate: string; // YYYY-MM-DD (Jatuh tempo pembayaran)
@@ -480,6 +481,7 @@ export interface PurchaseInvoice {
   freightCost?: number; // Biaya pengiriman / handling jika ada
   grandTotal: number; // subtotal + taxAmount - discount + freight
   grandTotalUSD?: number;
+  grandTotalIDR?: number;
 
   paidAmount?: number; // Jumlah yang telah dibayarkan
   remainingAmount?: number; // Sisa saldo yang belum dibayar
@@ -703,6 +705,7 @@ export interface ItemStockSupplier {
 export interface ItemStock {
   id: string;
   code: string; // SKU / Item Code (e.g. RM-STEEL-01, MLD-CAV-04)
+  partNo?: string; // Part Number / Nomor Komponen
   name: string;
   specification?: string; // Spek / Type Barang (e.g. SKD11 / Dia 28mm / JIS G4051)
   category: 'raw_material' | 'mold_sparepart' | 'wip' | 'finish_good' | 'general';
@@ -846,6 +849,22 @@ export type AppPermission =
   | 'fa-intangible'
   | 'fa-right-of-use'
   | 'inventory'
+  | 'report'
+  | 'report-ledger'
+  | 'ledger'
+  | 'report-balance-sheet'
+  | 'balanceSheet'
+  | 'report-trial-balance'
+  | 'trialBalance'
+  | 'report-profit-loss'
+  | 'profitLoss'
+  | 'production'
+  | 'production-lot-number'
+  | 'lotNumber'
+  | 'production-schedule'
+  | 'productionSchedule'
+  | 'production-ng-report'
+  | 'ngReport'
   | 'realisasi'
   | 'dept'
   | 'supplier'
@@ -858,7 +877,8 @@ export type AppPermission =
   | 'auditLog'
   | 'backup'
   | 'users'
-  | 'settings';
+  | 'settings'
+  | 'developer';
 
 export interface CompanySettings {
   companyName: string;
@@ -913,6 +933,15 @@ export type AuditModule =
   | 'Inventory (WIP)'
   | 'Inventory (Finish Good)'
   | 'Inventory (Return from Prod)'
+  | 'Report'
+  | 'Report (Ledger)'
+  | 'Report (Balance Sheet)'
+  | 'Report (Trial Balance)'
+  | 'Report (Profit / Loss)'
+  | 'Production'
+  | 'Production (Lot Number)'
+  | 'Production (Production Schedule)'
+  | 'Production (NG Report)'
   | 'Summary Budget'
   | 'Realisasi Budget'
   | 'Master Dept'
@@ -927,7 +956,8 @@ export type AuditModule =
   | 'Exchange Rate'
   | 'Company Settings'
   | 'User Management'
-  | 'Sistem';
+  | 'Sistem'
+  | 'Developer Studio';
 
 export interface AuditLogEntry {
   id: string;
@@ -949,6 +979,158 @@ export interface AuditLogEntry {
   newValue?: any;
 }
 
+// ==================== REPORT TYPES ====================
+export type ReportType = 'ledger' | 'balance_sheet' | 'trial_balance' | 'profit_loss';
+
+export interface LedgerEntry {
+  id: string;
+  date: string;
+  refNo: string;
+  sourceModule: 'Sales' | 'Purchase' | 'CashBank' | 'Depreciation' | 'Journal' | 'Inventory';
+  coaCode: string;
+  coaName: string;
+  description: string;
+  debit: number;
+  credit: number;
+  balance: number;
+  currency: string;
+  deptCode?: string;
+}
+
+export interface BalanceSheetItem {
+  code: string;
+  name: string;
+  type: 'asset' | 'liability' | 'equity';
+  category: string;
+  amount: number;
+  level: number;
+  isHeader?: boolean;
+}
+
+export interface TrialBalanceItem {
+  coaCode: string;
+  coaName: string;
+  nature: 'debit' | 'credit' | '';
+  type: string;
+  openingDebit: number;
+  openingCredit: number;
+  movementDebit: number;
+  movementCredit: number;
+  endingDebit: number;
+  endingCredit: number;
+}
+
+export interface ProfitLossItem {
+  category: 'REVENUE' | 'COGS' | 'EXPENSE' | 'OTHER_INCOME' | 'OTHER_EXPENSE' | 'TAX';
+  title: string;
+  coaCode?: string;
+  coaName?: string;
+  deptCode?: string;
+  amount: number;
+  budgetAmount?: number;
+  variance?: number;
+  isHeader?: boolean;
+  isTotal?: boolean;
+}
+
+// ==================== PRODUCTION TYPES ====================
+export type LotNumberStatus = 'in_progress' | 'qc_pending' | 'completed' | 'closed' | 'rejected';
+
+export interface LotNumber {
+  id: string;
+  lotNumber: string;
+  productionDate: string;
+  itemStockId: string;
+  itemCode: string;
+  partNo: string;
+  itemName: string;
+  targetQty: number;
+  actualQty: number;
+  goodQty: number;
+  ngQty: number;
+  uom: string;
+  machineLine: string;
+  processCode?: string;
+  processName?: string;
+  operatorName: string;
+  shift: 'Shift 1' | 'Shift 2' | 'Shift 3' | 'Non-Shift';
+  rawMaterialLotNo?: string;
+  status: LotNumberStatus;
+  notes?: string;
+  checkedBy?: string;
+  checkedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ProductionScheduleStatus = 'draft' | 'scheduled' | 'in_production' | 'completed' | 'delayed' | 'cancelled';
+export type ProductionPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type ScheduleStatus = ProductionScheduleStatus;
+export type SchedulePriority = ProductionPriority;
+
+export interface ProductionSchedule {
+  id: string;
+  scheduleNumber: string;
+  startDate: string;
+  endDate: string;
+  deptCode: string;
+  deptName: string;
+  itemStockId: string;
+  itemCode: string;
+  partNo: string;
+  itemName: string;
+  plannedQty: number;
+  actualProducedQty: number;
+  uom: string;
+  machineLine: string;
+  targetFinishDate: string;
+  priority: ProductionPriority;
+  shift: 'Shift 1' | 'Shift 2' | 'Shift 3' | 'All Shift';
+  status: ProductionScheduleStatus;
+  progressPercentage: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type DefectType = 'dimension_ng' | 'crack' | 'burr_flash' | 'scratch' | 'contamination' | 'deformation' | 'pinhole' | 'dent' | 'rust_oxidation' | 'under_weight' | 'other';
+export type NGReportStatus = 'draft' | 'open' | 'investigating' | 'action_taken' | 'closed';
+
+export interface NGReport {
+  id: string;
+  reportNumber: string;
+  reportDate: string;
+  lotNumberId?: string;
+  lotNumber: string;
+  itemStockId: string;
+  itemCode: string;
+  partNo: string;
+  itemName: string;
+  processCode?: string;
+  processName?: string;
+  defectType: DefectType;
+  defectDescription: string;
+  inspectedQty: number;
+  defectQty: number;
+  rejectQty: number;
+  reworkQty: number;
+  defectRate: number; // percentage
+  rootCause: string;
+  correctiveAction: string;
+  preventiveAction?: string;
+  inspectorName: string;
+  pic: string;
+  machineLine?: string;
+  status: NGReportStatus;
+  notes?: string;
+  checkedBy?: string;
+  checkedAt?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppState {
   monthlyData: Record<string, MonthData>;
   deptPlanningItems: DeptPlanningItem[];
@@ -967,6 +1149,9 @@ export interface AppState {
   receiveItemOrders?: ReceiveItemOrder[];
   returnItemOrders?: ReturnItemOrder[];
   paymentPurchases?: PaymentPurchase[];
+  lotNumbers?: LotNumber[];
+  productionSchedules?: ProductionSchedule[];
+  ngReports?: NGReport[];
   suppliers?: Supplier[];
   customers?: Customer[];
   itemStocks?: ItemStock[];
@@ -980,4 +1165,6 @@ export interface AppState {
   users?: AppUser[];
   currentUser?: AppUser | null;
   companySettings?: CompanySettings;
+  customMenus?: any[];
+  customViews?: Record<string, any>;
 }

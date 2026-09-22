@@ -33,6 +33,14 @@ import { ReceiveItemOrderView } from './components/ReceiveItemOrderView';
 import { ReturnItemOrderView } from './components/ReturnItemOrderView';
 import { PaymentPurchaseView } from './components/PaymentPurchaseView';
 import { CashBankView } from './components/CashBankView';
+import { LedgerView } from './components/reports/LedgerView';
+import { BalanceSheetView } from './components/reports/BalanceSheetView';
+import { TrialBalanceView } from './components/reports/TrialBalanceView';
+import { ProfitLossView } from './components/reports/ProfitLossView';
+import { LotNumberView } from './components/production/LotNumberView';
+import { ProductionScheduleView } from './components/production/ProductionScheduleView';
+import { NGReportView } from './components/production/NGReportView';
+import { DeveloperConsole } from './components/developer/DeveloperConsole';
 import {
   AppState,
   AppUser,
@@ -65,7 +73,10 @@ import {
   CashBankAccount,
   CashBankReceipt,
   CashBankPayment,
-  ReturnFromProdItem
+  ReturnFromProdItem,
+  LotNumber,
+  ProductionSchedule,
+  NGReport
 } from './types';
 import {
   DEFAULT_COA,
@@ -91,6 +102,9 @@ import {
   DEFAULT_CASH_BANK_RECEIPTS,
   DEFAULT_CASH_BANK_PAYMENTS,
   DEFAULT_RETURN_FROM_PROD_ITEMS,
+  DEFAULT_LOT_NUMBERS,
+  DEFAULT_PRODUCTION_SCHEDULES,
+  DEFAULT_NG_REPORTS,
   DP_MONTHS,
   INITIAL_SAMPLE_MONTHLY_DATA
 } from './constants/defaultData';
@@ -292,7 +306,16 @@ export default function App() {
             : DEFAULT_CASH_BANK_PAYMENTS,
           returnFromProdItems: Array.isArray(parsed.returnFromProdItems)
             ? parsed.returnFromProdItems
-            : DEFAULT_RETURN_FROM_PROD_ITEMS
+            : DEFAULT_RETURN_FROM_PROD_ITEMS,
+          lotNumbers: Array.isArray(parsed.lotNumbers)
+            ? parsed.lotNumbers
+            : DEFAULT_LOT_NUMBERS,
+          productionSchedules: Array.isArray(parsed.productionSchedules)
+            ? parsed.productionSchedules
+            : DEFAULT_PRODUCTION_SCHEDULES,
+          ngReports: Array.isArray(parsed.ngReports)
+            ? parsed.ngReports
+            : DEFAULT_NG_REPORTS
         };
       }
     } catch (e) {
@@ -327,7 +350,10 @@ export default function App() {
       cashBankAccounts: DEFAULT_CASH_BANK_ACCOUNTS,
       cashBankReceipts: DEFAULT_CASH_BANK_RECEIPTS,
       cashBankPayments: DEFAULT_CASH_BANK_PAYMENTS,
-      returnFromProdItems: DEFAULT_RETURN_FROM_PROD_ITEMS
+      returnFromProdItems: DEFAULT_RETURN_FROM_PROD_ITEMS,
+      lotNumbers: DEFAULT_LOT_NUMBERS,
+      productionSchedules: DEFAULT_PRODUCTION_SCHEDULES,
+      ngReports: DEFAULT_NG_REPORTS
     };
   });
 
@@ -3024,12 +3050,204 @@ export default function App() {
     showToast('Informasi perusahaan berhasil disimpan!', 'success');
   };
 
+  const handleSaveCustomMenus = (menus: any[]) => {
+    updateAndSyncState(prev => ({
+      ...prev,
+      customMenus: menus
+    }), {
+      action: 'UPDATE',
+      module: 'Developer Studio',
+      details: 'Memperbarui struktur menu dan submenu sistem'
+    });
+    showToast('Struktur menu sistem berhasil diperbarui!', 'success');
+  };
+
+  const handleSaveCustomViews = (views: Record<string, any>) => {
+    updateAndSyncState(prev => ({
+      ...prev,
+      customViews: views
+    }), {
+      action: 'UPDATE',
+      module: 'Developer Studio',
+      details: 'Memperbarui konfigurasi layout UI dan tampilan'
+    });
+    showToast('Layout tampilan UI berhasil diperbarui!', 'success');
+  };
+
   // Clear audit logs handler
   const handleClearAuditLogs = async () => {
     setAuditLogs([]);
     localStorage.removeItem(AUDIT_LOGS_STORAGE_KEY);
     await clearAuditLogsFromServer();
     showToast('Riwayat log aktivitas berhasil dibersihkan.', 'info');
+  };
+
+  // ===================== PRODUCTION: LOT NUMBER HANDLERS =====================
+  const handleAddLotNumber = (lotData: Omit<LotNumber, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newLot: LotNumber = {
+      ...lotData,
+      id: `lot_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      lotNumbers: [newLot, ...(prev.lotNumbers || [])]
+    }), {
+      action: 'CREATE',
+      module: 'Production (Lot Number)',
+      details: `Membuat nomor lot baru: [${newLot.lotNumber}] untuk ${newLot.itemName} (${newLot.partNo}) target: ${newLot.targetQty} PCS`
+    });
+    showToast(`Nomor Lot ${newLot.lotNumber} berhasil didaftarkan!`, 'success');
+  };
+
+  const handleUpdateLotNumber = (id: string, updated: Partial<LotNumber>) => {
+    updateAndSyncState(prev => ({
+      ...prev,
+      lotNumbers: (prev.lotNumbers || []).map(l => l.id === id ? { ...l, ...updated, updatedAt: new Date().toISOString() } : l)
+    }), {
+      action: 'UPDATE',
+      module: 'Production (Lot Number)',
+      details: `Memperbarui nomor lot: ${id}`
+    });
+    showToast('Data nomor lot berhasil diperbarui!', 'success');
+  };
+
+  const handleDeleteLotNumber = (id: string) => {
+    const lot = (appState.lotNumbers || []).find(l => l.id === id);
+    updateAndSyncState(prev => ({
+      ...prev,
+      lotNumbers: (prev.lotNumbers || []).filter(l => l.id !== id)
+    }), {
+      action: 'DELETE',
+      module: 'Production (Lot Number)',
+      details: `Menghapus nomor lot: ${lot?.lotNumber || id}`
+    });
+    showToast('Nomor lot berhasil dihapus!', 'info');
+  };
+
+  // ===================== PRODUCTION: SCHEDULE (MPS) HANDLERS =====================
+  const handleAddProductionSchedule = (schData: Omit<ProductionSchedule, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newSch: ProductionSchedule = {
+      ...schData,
+      id: `sch_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      productionSchedules: [newSch, ...(prev.productionSchedules || [])]
+    }), {
+      action: 'CREATE',
+      module: 'Production (Production Schedule)',
+      details: `Menambahkan jadwal produksi MPS [${newSch.scheduleNumber}] ${newSch.itemName} (${newSch.plannedQty} ${newSch.uom})`
+    });
+    showToast(`Jadwal produksi ${newSch.scheduleNumber} berhasil dibuat!`, 'success');
+  };
+
+  const handleUpdateProductionSchedule = (id: string, updated: Partial<ProductionSchedule>) => {
+    updateAndSyncState(prev => ({
+      ...prev,
+      productionSchedules: (prev.productionSchedules || []).map(s => s.id === id ? { ...s, ...updated, updatedAt: new Date().toISOString() } : s)
+    }), {
+      action: 'UPDATE',
+      module: 'Production (Production Schedule)',
+      details: `Memperbarui jadwal produksi ${id}`
+    });
+    showToast('Jadwal produksi berhasil diperbarui!', 'success');
+  };
+
+  const handleDeleteProductionSchedule = (id: string) => {
+    const sch = (appState.productionSchedules || []).find(s => s.id === id);
+    updateAndSyncState(prev => ({
+      ...prev,
+      productionSchedules: (prev.productionSchedules || []).filter(s => s.id !== id)
+    }), {
+      action: 'DELETE',
+      module: 'Production (Production Schedule)',
+      details: `Menghapus jadwal produksi ${sch?.scheduleNumber || id}`
+    });
+    showToast('Jadwal produksi berhasil dihapus!', 'info');
+  };
+
+  const handleStatusChangeSchedule = (id: string, status: any) => {
+    updateAndSyncState(prev => ({
+      ...prev,
+      productionSchedules: (prev.productionSchedules || []).map(s => s.id === id ? { ...s, status, updatedAt: new Date().toISOString() } : s)
+    }), {
+      action: 'UPDATE',
+      module: 'Production (Production Schedule)',
+      details: `Mengubah status jadwal produksi ${id} menjadi ${status}`
+    });
+    showToast(`Status jadwal berhasil diubah menjadi ${status}!`, 'success');
+  };
+
+  // ===================== PRODUCTION: NG REPORT HANDLERS =====================
+  const handleAddNGReport = (reportData: Omit<NGReport, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newReport: NGReport = {
+      ...reportData,
+      id: `ngr_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSyncState(prev => ({
+      ...prev,
+      ngReports: [newReport, ...(prev.ngReports || [])]
+    }), {
+      action: 'CREATE',
+      module: 'Production (NG Report)',
+      details: `Mencatat laporan NG [${newReport.reportNumber}] Lot: ${newReport.lotNumber}, Defect: ${newReport.defectType} (${newReport.defectQty} PCS)`
+    });
+    showToast(`Laporan NG ${newReport.reportNumber} berhasil dicatat!`, 'success');
+  };
+
+  const handleUpdateNGReport = (id: string, updated: Partial<NGReport>) => {
+    updateAndSyncState(prev => ({
+      ...prev,
+      ngReports: (prev.ngReports || []).map(r => r.id === id ? { ...r, ...updated, updatedAt: new Date().toISOString() } : r)
+    }), {
+      action: 'UPDATE',
+      module: 'Production (NG Report)',
+      details: `Memperbarui laporan NG ${id}`
+    });
+    showToast('Laporan NG berhasil diperbarui!', 'success');
+  };
+
+  const handleDeleteNGReport = (id: string) => {
+    const rpt = (appState.ngReports || []).find(r => r.id === id);
+    updateAndSyncState(prev => ({
+      ...prev,
+      ngReports: (prev.ngReports || []).filter(r => r.id !== id)
+    }), {
+      action: 'DELETE',
+      module: 'Production (NG Report)',
+      details: `Menghapus laporan NG ${rpt?.reportNumber || id}`
+    });
+    showToast('Laporan NG berhasil dihapus!', 'info');
+  };
+
+  const handleCheckNGReport = (id: string, userName: string) => {
+    updateAndSyncState(prev => ({
+      ...prev,
+      ngReports: (prev.ngReports || []).map(r => r.id === id ? { ...r, checkedBy: userName, checkedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } : r)
+    }), {
+      action: 'CHECK',
+      module: 'Production (NG Report)',
+      details: `QC Check Laporan NG ${id} oleh ${userName}`
+    });
+    showToast(`Laporan NG berhasil di-check oleh ${userName}`, 'success');
+  };
+
+  const handleApproveNGReport = (id: string, userName: string) => {
+    updateAndSyncState(prev => ({
+      ...prev,
+      ngReports: (prev.ngReports || []).map(r => r.id === id ? { ...r, approvedBy: userName, approvedAt: new Date().toISOString(), status: 'closed', updatedAt: new Date().toISOString() } : r)
+    }), {
+      action: 'APPROVE',
+      module: 'Production (NG Report)',
+      details: `Approve & Close Laporan NG ${id} oleh ${userName}`
+    });
+    showToast(`Laporan NG berhasil disetujui & di-close oleh ${userName}`, 'success');
   };
 
   // ===================== AUTH GUARD: INITIAL LOGIN FORM =====================
@@ -3083,6 +3301,29 @@ export default function App() {
     activeTab === 'penerimaan' ||
     activeTab === 'pembayaran';
 
+  const isProductionTab =
+    activeTab === 'production' ||
+    activeTab === 'production-lot-number' ||
+    activeTab === 'lotNumber' ||
+    activeTab === 'production-schedule' ||
+    activeTab === 'productionSchedule' ||
+    activeTab === 'production-ng-report' ||
+    activeTab === 'ngReport';
+
+  const isReportTab =
+    activeTab === 'report' ||
+    activeTab === 'report-ledger' ||
+    activeTab === 'ledger' ||
+    activeTab === 'report-balance-sheet' ||
+    activeTab === 'balanceSheet' ||
+    activeTab === 'balance-sheet' ||
+    activeTab === 'report-trial-balance' ||
+    activeTab === 'trialBalance' ||
+    activeTab === 'trial-balance' ||
+    activeTab === 'report-profit-loss' ||
+    activeTab === 'profitLoss' ||
+    activeTab === 'profit-loss';
+
   const isMasterDataTab =
     activeTab === 'dept' ||
     activeTab === 'supplier' ||
@@ -3120,6 +3361,21 @@ export default function App() {
          currentUser.permissions.includes('bukuBank') ||
          currentUser.permissions.includes('penerimaan') ||
          currentUser.permissions.includes('pembayaran') ||
+         currentUser.role === 'finance' ||
+         currentUser.role === 'dept_user')
+      : isProductionTab
+      ? (currentUser.permissions.includes('production') ||
+         currentUser.permissions.includes('lotNumber') ||
+         currentUser.permissions.includes('productionSchedule') ||
+         currentUser.permissions.includes('ngReport') ||
+         currentUser.role === 'finance' ||
+         currentUser.role === 'dept_user')
+      : isReportTab
+      ? (currentUser.permissions.includes('report') ||
+         currentUser.permissions.includes('ledger') ||
+         currentUser.permissions.includes('balanceSheet') ||
+         currentUser.permissions.includes('trialBalance') ||
+         currentUser.permissions.includes('profitLoss') ||
          currentUser.role === 'finance' ||
          currentUser.role === 'dept_user')
       : isBudgetTab
@@ -3177,6 +3433,7 @@ export default function App() {
           companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
           mobileOpen={isMobileMenuOpen}
           onCloseMobile={() => setIsMobileMenuOpen(false)}
+          customMenus={appState.customMenus}
         />
 
         {/* Main Content Area */}
@@ -3472,6 +3729,33 @@ export default function App() {
               />
             )}
 
+            {isTabPermitted && activeTab === 'developer' && (
+              <DeveloperConsole
+                currentUser={currentUser}
+                companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
+                customMenus={appState.customMenus}
+                onSaveCustomMenus={handleSaveCustomMenus}
+                customViews={appState.customViews}
+                onSaveCustomViews={handleSaveCustomViews}
+                allDataSources={{
+                  itemStocks: appState.itemStocks || [],
+                  purchaseOrders: appState.purchaseOrders || [],
+                  salesInvoiceItems: appState.salesInvoiceItems || [],
+                  lotNumbers: appState.lotNumbers || [],
+                  ngReports: appState.ngReports || [],
+                  coa: appState.coa || []
+                }}
+                onUpdateDataSource={(key, data) => {
+                  updateAndSyncState(prev => ({ ...prev, [key]: data }), {
+                    action: 'UPDATE',
+                    module: 'Developer Studio',
+                    details: `Update data source ${key}`
+                  });
+                }}
+                onSelectTab={tabId => setActiveTab(tabId)}
+              />
+            )}
+
             {/* Purchase Views */}
             {isTabPermitted && (activeTab === 'purchase-request' || activeTab === 'purchaseRequest' || activeTab === 'purchase') && (
               <PurchaseRequestView
@@ -3572,6 +3856,120 @@ export default function App() {
                 onApprovePaymentPurchase={handleApprovePaymentPurchase}
                 activePurchaseTab="payment-purchase"
                 onSwitchPurchaseTab={tab => setActiveTab(tab)}
+              />
+            )}
+
+            {/* Production Views */}
+            {isTabPermitted && (activeTab === 'production' || activeTab === 'production-lot-number' || activeTab === 'lotNumber') && (
+              <LotNumberView
+                lotNumbers={appState.lotNumbers || DEFAULT_LOT_NUMBERS}
+                itemStocks={appState.itemStocks || []}
+                departments={appState.departments}
+                processes={appState.productionProcesses || []}
+                currentUser={currentUser}
+                companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
+                onAddLotNumber={handleAddLotNumber}
+                onUpdateLotNumber={handleUpdateLotNumber}
+                onDeleteLotNumber={handleDeleteLotNumber}
+                activeProductionTab="production-lot-number"
+                onSwitchProductionTab={tab => setActiveTab(tab)}
+              />
+            )}
+
+            {isTabPermitted && (activeTab === 'production-schedule' || activeTab === 'productionSchedule') && (
+              <ProductionScheduleView
+                schedules={appState.productionSchedules || DEFAULT_PRODUCTION_SCHEDULES}
+                itemStocks={appState.itemStocks || []}
+                departments={appState.departments}
+                currentUser={currentUser}
+                companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
+                onAddSchedule={handleAddProductionSchedule}
+                onUpdateSchedule={handleUpdateProductionSchedule}
+                onDeleteSchedule={handleDeleteProductionSchedule}
+                onStatusChange={handleStatusChangeSchedule}
+                activeProductionTab="production-schedule"
+                onSwitchProductionTab={tab => setActiveTab(tab)}
+              />
+            )}
+
+            {isTabPermitted && (activeTab === 'production-ng-report' || activeTab === 'ngReport') && (
+              <NGReportView
+                ngReports={appState.ngReports || DEFAULT_NG_REPORTS}
+                lotNumbers={appState.lotNumbers || DEFAULT_LOT_NUMBERS}
+                itemStocks={appState.itemStocks || []}
+                departments={appState.departments}
+                currentUser={currentUser}
+                companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
+                onAddNGReport={handleAddNGReport}
+                onUpdateNGReport={handleUpdateNGReport}
+                onDeleteNGReport={handleDeleteNGReport}
+                onCheckNGReport={handleCheckNGReport}
+                onApproveNGReport={handleApproveNGReport}
+                activeProductionTab="production-ng-report"
+                onSwitchProductionTab={tab => setActiveTab(tab)}
+              />
+            )}
+
+            {/* Report Views */}
+            {isTabPermitted && (activeTab === 'report' || activeTab === 'report-ledger' || activeTab === 'ledger') && (
+              <LedgerView
+                coaList={appState.coa}
+                departments={appState.departments}
+                ratesByYear={appState.ratesByYear}
+                companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
+                salesInvoices={appState.salesInvoiceItems || []}
+                purchaseInvoices={appState.purchaseInvoices || []}
+                cashBankReceipts={appState.cashBankReceipts || []}
+                cashBankPayments={appState.cashBankPayments || []}
+                activeReportTab="report-ledger"
+                onSwitchReportTab={tab => setActiveTab(tab)}
+              />
+            )}
+
+            {isTabPermitted && (activeTab === 'report-balance-sheet' || activeTab === 'balanceSheet' || activeTab === 'balance-sheet') && (
+              <BalanceSheetView
+                coaList={appState.coa}
+                departments={appState.departments}
+                ratesByYear={appState.ratesByYear}
+                companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
+                cashBankAccounts={appState.cashBankAccounts || []}
+                salesInvoices={appState.salesInvoiceItems || []}
+                purchaseInvoices={appState.purchaseInvoices || []}
+                fixedAssets={appState.fixedAssetItems || []}
+                inventoryItems={appState.inventoryItems || []}
+                activeReportTab="report-balance-sheet"
+                onSwitchReportTab={tab => setActiveTab(tab)}
+              />
+            )}
+
+            {isTabPermitted && (activeTab === 'report-trial-balance' || activeTab === 'trialBalance' || activeTab === 'trial-balance') && (
+              <TrialBalanceView
+                coaList={appState.coa}
+                departments={appState.departments}
+                ratesByYear={appState.ratesByYear}
+                companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
+                cashBankAccounts={appState.cashBankAccounts || []}
+                salesInvoices={appState.salesInvoiceItems || []}
+                purchaseInvoices={appState.purchaseInvoices || []}
+                fixedAssets={appState.fixedAssetItems || []}
+                inventoryItems={appState.inventoryItems || []}
+                activeReportTab="report-trial-balance"
+                onSwitchReportTab={tab => setActiveTab(tab)}
+              />
+            )}
+
+            {isTabPermitted && (activeTab === 'report-profit-loss' || activeTab === 'profitLoss' || activeTab === 'profit-loss') && (
+              <ProfitLossView
+                coaList={appState.coa}
+                departments={appState.departments}
+                ratesByYear={appState.ratesByYear}
+                companySettings={appState.companySettings || DEFAULT_COMPANY_SETTINGS}
+                salesInvoices={appState.salesInvoiceItems || []}
+                purchaseInvoices={appState.purchaseInvoices || []}
+                deptPlanningItems={appState.deptPlanningItems || []}
+                realizations={appState.realizations || []}
+                activeReportTab="report-profit-loss"
+                onSwitchReportTab={tab => setActiveTab(tab)}
               />
             )}
 

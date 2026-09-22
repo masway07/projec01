@@ -26,7 +26,11 @@ import {
   PackageCheck,
   Workflow,
   CircleDollarSign,
-  X
+  Factory,
+  FileText,
+  X,
+  Wrench,
+  Code2
 } from 'lucide-react';
 import { AppPermission, AppUser, CompanySettings } from '../types';
 
@@ -51,6 +55,7 @@ interface SidebarProps {
   companySettings?: CompanySettings;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
+  customMenus?: any[];
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -60,7 +65,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLogout,
   companySettings,
   mobileOpen = false,
-  onCloseMobile
+  onCloseMobile,
+  customMenus
 }) => {
   // Collapse all submenus by default so the sidebar is compact and not stretched long downwards
   const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({});
@@ -73,7 +79,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }));
   };
 
-  const navGroups: { group: string; items: NavItem[] }[] = [
+  const iconMap: Record<string, any> = {
+    FileSpreadsheet,
+    Wallet,
+    ShoppingCart,
+    TrendingUp,
+    Box,
+    Boxes,
+    Factory,
+    FileText,
+    Building2,
+    Truck,
+    Briefcase,
+    PackageCheck,
+    Workflow,
+    CircleDollarSign,
+    BookOpen,
+    ArrowLeftRight,
+    Users,
+    History,
+    UploadCloud,
+    Settings,
+    Wrench,
+    Layers
+  };
+
+  const defaultNavGroups: { group: string; items: NavItem[] }[] = [
     {
       group: 'Workspace',
       items: [
@@ -172,6 +203,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
             { id: 'inventory-return-from-prod', label: 'Return from Prod', category: 'return_from_prod' },
           ]
         },
+        {
+          id: 'production',
+          label: 'Production',
+          icon: Factory,
+          subItems: [
+            { id: 'production-lot-number', label: 'Lot Number', category: 'lot_number' },
+            { id: 'production-schedule', label: 'Production Schedule', category: 'production_schedule' },
+            { id: 'production-ng-report', label: 'NG Report', category: 'ng_report' },
+          ]
+        },
+        {
+          id: 'report',
+          label: 'Report',
+          icon: FileText,
+          subItems: [
+            { id: 'report-ledger', label: 'Ledger', category: 'ledger' },
+            { id: 'report-balance-sheet', label: 'Balance sheet', category: 'balance_sheet' },
+            { id: 'report-trial-balance', label: 'Trial Balance', category: 'trial_balance' },
+            { id: 'report-profit-loss', label: 'profit / Loss', category: 'profit_loss' },
+          ]
+        },
       ]
     },
     {
@@ -195,8 +247,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'backup', label: 'Backup & Data', icon: UploadCloud },
         { id: 'settings', label: 'Pengaturan Perusahaan', icon: Settings },
       ]
+    },
+    {
+      group: 'Sistem',
+      items: [
+        { id: 'developer', label: 'Developer', icon: Wrench },
+      ]
     }
   ];
+
+  const navGroups: { group: string; items: NavItem[] }[] = (customMenus && customMenus.length > 0)
+    ? customMenus.map(g => ({
+        group: g.group,
+        items: (g.items || []).map((it: any) => ({
+          id: it.id,
+          label: it.label,
+          icon: iconMap[it.icon] || Layers,
+          subItems: it.subItems
+        }))
+      }))
+    : defaultNavGroups;
 
   const handleTabClick = (tabId: string) => {
     onSelectTab(tabId);
@@ -285,6 +355,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 currentUser.permissions.includes('salesInvoice')
               );
             }
+            if (item.id === 'production') {
+              return (
+                currentUser.permissions.includes('production') ||
+                currentUser.permissions.includes('lotNumber') ||
+                currentUser.permissions.includes('productionSchedule') ||
+                currentUser.permissions.includes('ngReport')
+              );
+            }
+            if (item.id === 'report') {
+              return (
+                currentUser.permissions.includes('report') ||
+                currentUser.permissions.includes('ledger') ||
+                currentUser.permissions.includes('balanceSheet') ||
+                currentUser.permissions.includes('trialBalance') ||
+                currentUser.permissions.includes('profitLoss')
+              );
+            }
             return currentUser.permissions.includes(item.id);
           });
 
@@ -321,6 +408,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       activeTab === 'fixedAsset' ||
                       activeTab.startsWith('fixed-asset') ||
                       s.id === activeTab
+                    )) ||
+                    (item.id === 'production' && (
+                      activeTab === 'production' ||
+                      activeTab === s.id ||
+                      (activeTab === 'lotNumber' && s.id === 'production-lot-number') ||
+                      (activeTab === 'productionSchedule' && s.id === 'production-schedule') ||
+                      (activeTab === 'ngReport' && s.id === 'production-ng-report')
+                    )) ||
+                    (item.id === 'report' && (
+                      activeTab === 'report' ||
+                      activeTab === s.id ||
+                      (activeTab === 'ledger' && s.id === 'report-ledger') ||
+                      (activeTab === 'balanceSheet' && s.id === 'report-balance-sheet') ||
+                      (activeTab === 'trialBalance' && s.id === 'report-trial-balance') ||
+                      (activeTab === 'profitLoss' && s.id === 'report-profit-loss')
                     )) ||
                     (activeTab === 'inventory' && s.id === 'inventory-raw-material') ||
                     ((activeTab === 'sales' || activeTab === 'salesPlan') && s.id === 'sales-plan') ||
